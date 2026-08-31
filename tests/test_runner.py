@@ -1,6 +1,8 @@
 from pathlib import Path
 
-from patchbench.runner import run
+from patchbench.openai_reviewer import TimedReview
+from patchbench.runner import run, run_openai
+from patchbench.schemas import ReviewResult
 
 
 def test_example_benchmark_scores_perfectly() -> None:
@@ -10,3 +12,27 @@ def test_example_benchmark_scores_perfectly() -> None:
     assert summary.false_positive_rate == 0.0
     assert summary.total_accuracy == 1.0
 
+
+class FakeReviewer:
+    def review_patch(self, patch: str) -> TimedReview:
+        bug_found = "completed / total" in patch
+        return TimedReview(
+            review=ReviewResult(
+                bug_found=bug_found,
+                category="division_by_zero" if bug_found else None,
+                file="calculator.py" if bug_found else None,
+                line=6 if bug_found else None,
+                explanation="Mocked review.",
+                confidence=0.9,
+            ),
+            latency_ms=12.5,
+        )
+
+
+def test_live_mode_reviews_patches_and_records_latency() -> None:
+    root = Path(__file__).parents[1]
+
+    summary = run_openai(root / "benchmark", FakeReviewer())
+
+    assert summary.total_accuracy == 1.0
+    assert [score.latency_ms for score in summary.cases] == [12.5, 12.5]
