@@ -6,7 +6,12 @@ from patchbench.schemas import (
 )
 
 
-def score_case(case: BenchmarkCase, review: ReviewResult, line_tolerance: int = 2) -> CaseScore:
+def score_case(
+    case: BenchmarkCase,
+    review: ReviewResult,
+    line_tolerance: int = 2,
+    latency_ms: float | None = None,
+) -> CaseScore:
     expected = case.expected
     detection_correct = review.bug_found == expected.bug_present
     false_positive = review.bug_found and not expected.bug_present
@@ -29,6 +34,7 @@ def score_case(case: BenchmarkCase, review: ReviewResult, line_tolerance: int = 
         false_positive=false_positive,
         points_earned=sum(checks),
         points_possible=len(checks),
+        latency_ms=latency_ms,
     )
 
 
@@ -45,4 +51,3 @@ def summarize(scores: list[CaseScore]) -> BenchmarkSummary:
         total_accuracy=sum(score.points_earned for score in scores)
         / sum(score.points_possible for score in scores),
     )
-
