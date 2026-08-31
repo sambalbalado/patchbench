@@ -54,7 +54,8 @@ offline cases use `null` because no model request occurred.
 The request timeout is 60 seconds. A timeout, API failure, refusal/missing structured output, or
 schema validation failure stops the run with the case ID, a clear error, and elapsed request time.
 There are intentionally no retries or concurrent workers in this milestone, so paid calls are
-predictable and failures are visible.
+predictable and failures are visible. Live mode makes one paid model request per discovered
+benchmark case, so review the benchmark directory before running it.
 
 ## Benchmark format
 
