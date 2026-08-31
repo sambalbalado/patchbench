@@ -1,37 +1,62 @@
 # PatchBench
 
-PatchBench is a reproducible evaluation harness for AI code reviewers. It answers a practical question: **does an AI reviewer find real defects without inventing new ones?**
+PatchBench is a reproducible evaluation harness for AI code reviewers. It answers a practical
+question: **does an AI reviewer find real defects without inventing new ones?**
 
-Instead of judging an AI from a polished demo, PatchBench runs it against labeled code patches and measures detection accuracy, category accuracy, location accuracy, false-positive rate, latency, and cost.
+It runs labeled code patches through either saved predictions or a real OpenAI model, then measures
+detection accuracy, category accuracy, location accuracy, false-positive rate, and per-request
+latency.
 
-## Why this project exists
+## Setup
 
-AI-generated reviews are nondeterministic and can sound convincing when they are wrong. Teams need repeatable evidence before trusting them in a development workflow. PatchBench treats prompts and models as replaceable experiment configurations while keeping benchmark cases and scoring rules versioned.
-
-## Current milestone
-
-The starter version provides:
-
-- A validated JSON contract for AI review results
-- A version-controlled benchmark format
-- Deterministic scoring with line-number tolerance
-- False-positive measurement using safe code changes
-- A command-line benchmark runner
-- Unit tests that do not require paid model calls
-
-## Quick start
+PatchBench requires Python 3.11 or newer.
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -e '.[dev]'
-patchbench --benchmark benchmark --predictions examples/predictions.json
-pytest
 ```
 
-The included prediction file simulates a model response so the complete evaluation loop can run offline.
+## Offline prediction mode
 
-## Benchmark case format
+Offline mode is deterministic, free, and remains the default. It validates every saved prediction
+against `ReviewResult` before scoring it.
+
+```bash
+patchbench
+# Equivalent explicit command:
+patchbench --benchmark benchmark --predictions examples/predictions.json
+```
+
+The prediction file must be a JSON object keyed by benchmark case ID. See
+`examples/predictions.json` for the complete format.
+
+## Real OpenAI review mode
+
+Create an API key, choose a model that supports Structured Outputs, and export both values. The
+example model can be replaced without changing code.
+
+```bash
+export OPENAI_API_KEY="your-api-key"
+export PATCHBENCH_MODEL="gpt-5-mini"
+patchbench --benchmark benchmark --openai
+```
+
+You can copy `.env.example` as a reminder of the required variable names, but PatchBench does not
+load `.env` files itself. The API key is read from the process environment, passed directly to the
+OpenAI SDK, and is never written to results or printed.
+
+Live mode sends each `patch.diff` to the OpenAI Responses API synchronously. The SDK constrains the
+response to the existing `ReviewResult` Pydantic schema, and PatchBench validates it again before
+scoring. Requests set `store=False`, and each case in the JSON summary includes `latency_ms`;
+offline cases use `null` because no model request occurred.
+
+The request timeout is 60 seconds. A timeout, API failure, refusal/missing structured output, or
+schema validation failure stops the run with the case ID, a clear error, and elapsed request time.
+There are intentionally no retries or concurrent workers in this milestone, so paid calls are
+predictable and failures are visible.
+
+## Benchmark format
 
 Each case contains a code patch and its expected finding:
 
@@ -42,25 +67,38 @@ benchmark/
     expected.json
 ```
 
-Safe patches are deliberately included. Without negative examples, a reviewer that reports a bug for every change could appear successful.
+Safe patches are deliberately included. Without negative examples, a reviewer that reports a bug
+for every change could appear successful.
+
+## Development checks
+
+All automated model tests use mocked clients and make no network or paid API calls.
+
+```bash
+pytest
+ruff check .
+```
+
+## Design choices
+
+- Offline and live execution are separate CLI modes but share the same loader, schema, evaluator,
+  and output format.
+- `ReviewResult` is the single response contract. Extra fields and invalid field values are
+  rejected rather than silently accepted.
+- The model name is environment configuration so experiments can change models without code edits.
+- Latency uses a monotonic clock around every request and is retained even in raised request errors.
+- The implementation is deliberately synchronous and in-memory; there is no frontend, database,
+  or worker system yet.
 
 ## Roadmap
 
-1. Add an adapter for a real model with schema-constrained output.
-2. Expand to 20–30 labeled Python patches.
-3. Record prompt version, model, latency, token usage, and estimated cost.
-4. Execute cases concurrently with bounded retries and timeouts.
-5. Persist experiment runs through FastAPI and SQLite/Postgres.
-6. Add a small dashboard for comparing configurations.
-
-## Engineering principles
-
-- Model providers are replaceable dependencies.
-- Every response is validated before scoring.
-- Evaluation is reproducible and version controlled.
-- Deterministic checks are preferred when possible.
-- Paid network calls are excluded from ordinary unit tests.
+1. Expand to 20–30 labeled Python patches.
+2. Record prompt version, token usage, and estimated cost.
+3. Execute cases concurrently with bounded retries and timeouts.
+4. Persist experiment runs through FastAPI and SQLite/Postgres.
+5. Add a small dashboard for comparing configurations.
 
 ## License
 
-Choose a license before accepting external contributions. MIT is a common option for portfolio projects.
+Choose a license before accepting external contributions. MIT is a common option for portfolio
+projects.
