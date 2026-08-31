@@ -101,5 +101,4 @@ ruff check .
 
 ## License
 
-Choose a license before accepting external contributions. MIT is a common option for portfolio
-projects.
+PatchBench is available under the [MIT License](LICENSE).
