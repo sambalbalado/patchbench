@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class ExpectedFinding(BaseModel):
@@ -18,6 +18,8 @@ class ExpectedFinding(BaseModel):
 
 
 class ReviewResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     bug_found: bool
     category: str | None = None
     file: str | None = None
@@ -42,6 +44,7 @@ class CaseScore(BaseModel):
     false_positive: bool
     points_earned: int
     points_possible: int
+    latency_ms: float | None = Field(default=None, ge=0)
 
     @property
     def accuracy(self) -> float:
@@ -53,4 +56,3 @@ class BenchmarkSummary(BaseModel):
     detection_accuracy: float
     false_positive_rate: float
     total_accuracy: float
-
