@@ -1,0 +1,21 @@
+{
+  "division_by_zero": {
+    "bug_found": true,
+    "category": "division_by_zero",
+    "file": "calculator.py",
+    "line": 6,
+    "explanation": "The removed guard means total can be zero during division.",
+    "suggested_test": "Call completion_rate(0, 0) and verify defined behavior.",
+    "confidence": 0.97
+  },
+  "safe_refactor": {
+    "bug_found": false,
+    "category": null,
+    "file": null,
+    "line": null,
+    "explanation": "No meaningful behavior changed.",
+    "suggested_test": "Confirm greet('Ada') returns 'Hello, Ada'.",
+    "confidence": 0.91
+  }
+}
+

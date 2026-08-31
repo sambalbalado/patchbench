@@ -1,0 +1,11 @@
+diff --git a/calculator.py b/calculator.py
+index 1111111..2222222 100644
+--- a/calculator.py
++++ b/calculator.py
+@@ -4,5 +4,5 @@ def completion_rate(completed: int, total: int) -> float:
+-    if total == 0:
+-        return 0.0
+-    return completed / total
++    # The caller now receives the raw ratio.
++    return completed / total
+
