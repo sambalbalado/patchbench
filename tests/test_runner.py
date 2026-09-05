@@ -29,10 +29,18 @@ class FakeReviewer:
         )
 
 
-def test_live_mode_reviews_patches_and_records_latency() -> None:
-    root = Path(__file__).parents[1]
+def test_live_mode_reviews_patches_and_records_latency(tmp_path: Path) -> None:
+    case_dir = tmp_path / "division_by_zero"
+    case_dir.mkdir()
+    (case_dir / "patch.diff").write_text(
+        "diff --git a/calculator.py b/calculator.py\n+return completed / total\n"
+    )
+    (case_dir / "expected.json").write_text(
+        '{"bug_present": true, "category": "division_by_zero", '
+        '"file": "calculator.py", "line": 6, "explanation": "Missing zero guard."}'
+    )
 
-    summary = run_openai(root / "benchmark", FakeReviewer())
+    summary = run_openai(tmp_path, FakeReviewer())
 
     assert summary.total_accuracy == 1.0
-    assert [score.latency_ms for score in summary.cases] == [12.5, 12.5]
+    assert [score.latency_ms for score in summary.cases] == [12.5]

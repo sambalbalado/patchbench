@@ -1,0 +1,7 @@
+{
+  "bug_present": false,
+  "category": null,
+  "file": null,
+  "line": null,
+  "explanation": "Set membership is equivalent to the two string equality checks."
+}

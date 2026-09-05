@@ -2,7 +2,6 @@
   "bug_present": true,
   "category": "division_by_zero",
   "file": "calculator.py",
-  "line": 6,
+  "line": 5,
   "explanation": "Removing the zero guard allows total=0 to raise ZeroDivisionError."
 }
-

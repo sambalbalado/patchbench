@@ -1,0 +1,8 @@
+{
+  "bug_present": false,
+  "category": null,
+  "file": null,
+  "line": null,
+  "explanation": "The guard-clause rewrite preserves validation, saving, and return behavior."
+}
+

@@ -1,0 +1,9 @@
+diff --git a/translations.py b/translations.py
+index 1111111..2222222 100644
+--- a/translations.py
++++ b/translations.py
+@@ -8,3 +8,3 @@ def translated_profile(user_id: str, locale: str):
+-    cache_key = f"{user_id}:{locale}"
++    cache_key = user_id
+     return cache.get_or_set(cache_key, lambda: build_profile(user_id, locale))
+

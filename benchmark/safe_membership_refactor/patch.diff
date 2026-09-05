@@ -1,0 +1,8 @@
+diff --git a/status.py b/status.py
+index 1111111..2222222 100644
+--- a/status.py
++++ b/status.py
+@@ -2,3 +2,3 @@ def is_terminal(status: str) -> bool:
+-    return status == "complete" or status == "failed"
++    return status in {"complete", "failed"}
+

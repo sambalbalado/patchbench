@@ -1,0 +1,14 @@
+diff --git a/orders.py b/orders.py
+index 1111111..2222222 100644
+--- a/orders.py
++++ b/orders.py
+@@ -2,5 +2,5 @@ def submit(order):
+-    if order.is_valid():
+-        repository.save(order)
+-        return True
+-    return False
++    if not order.is_valid():
++        return False
++    repository.save(order)
++    return True
+

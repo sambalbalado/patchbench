@@ -1,0 +1,12 @@
+diff --git a/tags.py b/tags.py
+index 1111111..2222222 100644
+--- a/tags.py
++++ b/tags.py
+@@ -1,5 +1,3 @@
+-def add_tag(tag: str, tags: list[str] | None = None) -> list[str]:
+-    if tags is None:
+-        tags = []
++def add_tag(tag: str, tags: list[str] = []) -> list[str]:
+     tags.append(tag)
+     return tags
+

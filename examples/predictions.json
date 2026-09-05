@@ -16,6 +16,95 @@
     "explanation": "No meaningful behavior changed.",
     "suggested_test": "Confirm greet('Ada') returns 'Hello, Ada'.",
     "confidence": 0.91
+  },
+  "off_by_one_slice": {
+    "bug_found": true,
+    "category": "off_by_one",
+    "file": "pagination.py",
+    "line": 3,
+    "explanation": "The slice returns one more item than page_size.",
+    "suggested_test": "Request a page of three items from a longer list and assert its length is three.",
+    "confidence": 0.98
+  },
+  "mutable_default_argument": {
+    "bug_found": true,
+    "category": "mutable_default_argument",
+    "file": "tags.py",
+    "line": 1,
+    "explanation": "The default list persists across calls.",
+    "suggested_test": "Call add_tag twice without a tags argument and verify the results are independent.",
+    "confidence": 0.99
+  },
+  "missing_await": {
+    "bug_found": true,
+    "category": "missing_await",
+    "file": "profile.py",
+    "line": 7,
+    "explanation": "The code accesses attributes on an unawaited coroutine.",
+    "suggested_test": "Run load_profile with an async client and assert the returned profile fields.",
+    "confidence": 0.99
+  },
+  "data_loss_write_mode": {
+    "bug_found": true,
+    "category": "data_loss",
+    "file": "audit.py",
+    "line": 4,
+    "explanation": "Write mode truncates earlier audit events.",
+    "suggested_test": "Record two events and verify both remain in the file.",
+    "confidence": 0.99
+  },
+  "cache_key_omits_locale": {
+    "bug_found": true,
+    "category": "cache_key_collision",
+    "file": "translations.py",
+    "line": 8,
+    "explanation": "The cache key no longer distinguishes locales.",
+    "suggested_test": "Request one user in two locales and verify both translations.",
+    "confidence": 0.96
+  },
+  "safe_guard_clause": {
+    "bug_found": false,
+    "category": null,
+    "file": null,
+    "line": null,
+    "explanation": "The early return preserves the original control flow.",
+    "suggested_test": "Exercise valid and invalid orders.",
+    "confidence": 0.95
+  },
+  "safe_context_manager": {
+    "bug_found": false,
+    "category": null,
+    "file": null,
+    "line": null,
+    "explanation": "The file is still read and closed reliably.",
+    "suggested_test": "Read a small UTF-8 configuration file.",
+    "confidence": 0.97
+  },
+  "safe_enumerate_refactor": {
+    "bug_found": false,
+    "category": null,
+    "file": null,
+    "line": null,
+    "explanation": "enumerate(start=1) matches the former index calculation.",
+    "suggested_test": "Compare output for empty and multi-row inputs.",
+    "confidence": 0.98
+  },
+  "safe_constant_extraction": {
+    "bug_found": false,
+    "category": null,
+    "file": null,
+    "line": null,
+    "explanation": "Only the existing upload limit was given a name.",
+    "suggested_test": "Check values immediately below, at, and above the limit.",
+    "confidence": 0.99
+  },
+  "safe_membership_refactor": {
+    "bug_found": false,
+    "category": null,
+    "file": null,
+    "line": null,
+    "explanation": "Membership in these two literals is behaviorally equivalent.",
+    "suggested_test": "Check complete, failed, and an active status.",
+    "confidence": 0.99
   }
 }
-

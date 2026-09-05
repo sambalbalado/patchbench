@@ -1,0 +1,8 @@
+{
+  "bug_present": true,
+  "category": "cache_key_collision",
+  "file": "translations.py",
+  "line": 8,
+  "explanation": "Profiles in different locales now share a cache entry and can return the wrong language."
+}
+

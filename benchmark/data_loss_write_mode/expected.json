@@ -1,0 +1,8 @@
+{
+  "bug_present": true,
+  "category": "data_loss",
+  "file": "audit.py",
+  "line": 4,
+  "explanation": "Opening the audit log in write mode truncates all previously recorded events."
+}
+

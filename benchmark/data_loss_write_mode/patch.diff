@@ -1,0 +1,9 @@
+diff --git a/audit.py b/audit.py
+index 1111111..2222222 100644
+--- a/audit.py
++++ b/audit.py
+@@ -4,3 +4,3 @@ def record_event(path: str, event: str) -> None:
+-    with open(path, "a", encoding="utf-8") as stream:
++    with open(path, "w", encoding="utf-8") as stream:
+         stream.write(event + "\n")
+

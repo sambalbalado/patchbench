@@ -1,0 +1,9 @@
+diff --git a/profile.py b/profile.py
+index 1111111..2222222 100644
+--- a/profile.py
++++ b/profile.py
+@@ -7,3 +7,3 @@ async def load_profile(client, user_id: str):
+-    user = await client.fetch_user(user_id)
++    user = client.fetch_user(user_id)
+     return {"name": user.name, "email": user.email}
+
