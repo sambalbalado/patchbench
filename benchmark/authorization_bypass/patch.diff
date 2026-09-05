@@ -2,9 +2,8 @@ diff --git a/admin.py b/admin.py
 index 1111111..2222222 100644
 --- a/admin.py
 +++ b/admin.py
-@@ -6,5 +6,2 @@ def delete_account(actor, account_id: str) -> None:
+@@ -6,3 +6 @@ def delete_account(actor, account_id: str) -> None:
 -    if not actor.is_admin:
 -        raise PermissionError("Admin access required")
 -    accounts.delete(account_id)
 +    accounts.delete(account_id)
-

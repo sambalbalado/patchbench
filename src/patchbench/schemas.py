@@ -14,6 +14,10 @@ class ExpectedFinding(BaseModel):
     def require_bug_details(self) -> "ExpectedFinding":
         if self.bug_present and not all((self.category, self.file, self.line)):
             raise ValueError("Bug cases require category, file, and line")
+        if not self.bug_present and any(
+            value is not None for value in (self.category, self.file, self.line)
+        ):
+            raise ValueError("Safe cases cannot specify category, file, or line")
         return self
 
 

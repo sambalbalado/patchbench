@@ -2,8 +2,7 @@ diff --git a/payments.py b/payments.py
 index 1111111..2222222 100644
 --- a/payments.py
 +++ b/payments.py
-@@ -6,3 +6,3 @@ def charge(card_number: str, amount: int) -> Receipt:
+@@ -6,2 +6,2 @@ def charge(card_number: str, amount: int) -> Receipt:
 -    logger.info("Charging card %s", card_number)
 +    logger.info("Charging card ending in %s", card_number[-4:])
      return gateway.charge(card_number, amount)
-

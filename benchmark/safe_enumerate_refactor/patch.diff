@@ -2,10 +2,9 @@ diff --git a/report.py b/report.py
 index 1111111..2222222 100644
 --- a/report.py
 +++ b/report.py
-@@ -5,4 +5,3 @@ def numbered_rows(rows: list[str]) -> list[str]:
+@@ -5,4 +5,2 @@ def numbered_rows(rows: list[str]) -> list[str]:
 -    result = []
 -    for index in range(len(rows)):
 -        result.append(f"{index + 1}. {rows[index]}")
 +    result = [f"{index}. {row}" for index, row in enumerate(rows, start=1)]
      return result
-

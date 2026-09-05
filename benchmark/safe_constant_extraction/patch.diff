@@ -2,10 +2,9 @@ diff --git a/uploads.py b/uploads.py
 index 1111111..2222222 100644
 --- a/uploads.py
 +++ b/uploads.py
-@@ -1,4 +1,6 @@
+@@ -1,2 +1,4 @@
 +MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 +
  def accepts_upload(size: int) -> bool:
 -    return size <= 10 * 1024 * 1024
 +    return size <= MAX_UPLOAD_BYTES
-

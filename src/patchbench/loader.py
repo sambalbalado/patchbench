@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+from patchbench.diffs import added_lines_by_file, validate_patch_location
 from patchbench.schemas import BenchmarkCase, ExpectedFinding
 
 
@@ -12,6 +13,18 @@ def load_cases(benchmark_dir: Path) -> list[BenchmarkCase]:
         if not patch_path.exists():
             raise FileNotFoundError(f"Missing patch for {case_dir.name}: {patch_path}")
         expected = ExpectedFinding.model_validate_json(expected_path.read_text())
+        patch = patch_path.read_text()
+        additions = added_lines_by_file(patch)
+        if not additions:
+            raise ValueError(f"Case {case_dir.name} patch has no unified diff hunks")
+        if expected.bug_present:
+            # ExpectedFinding guarantees these values for positive cases.
+            validate_patch_location(
+                patch,
+                case_id=case_dir.name,
+                expected_file=expected.file or "",
+                expected_line=expected.line or 0,
+            )
         cases.append(
             BenchmarkCase(case_id=case_dir.name, patch_path=patch_path, expected=expected)
         )

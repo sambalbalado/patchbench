@@ -2,7 +2,6 @@ diff --git a/search.py b/search.py
 index 1111111..2222222 100644
 --- a/search.py
 +++ b/search.py
-@@ -3,3 +3,3 @@ def product_by_sku(connection, sku: str):
+@@ -3 +3 @@ def product_by_sku(connection, sku: str):
 -    return connection.execute(f"SELECT * FROM products WHERE sku = '{sku}'").fetchone()
 +    return connection.execute("SELECT * FROM products WHERE sku = ?", (sku,)).fetchone()
-

@@ -2,11 +2,10 @@ diff --git a/invitations.py b/invitations.py
 index 1111111..2222222 100644
 --- a/invitations.py
 +++ b/invitations.py
-@@ -1,5 +1,5 @@
+@@ -1,4 +1,4 @@
 -import random
 +import secrets
  
  def invitation_code() -> str:
 -    return str(random.randint(0, 999999))
 +    return secrets.token_urlsafe(24)
-

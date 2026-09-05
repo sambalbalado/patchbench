@@ -33,7 +33,13 @@ def test_live_mode_reviews_patches_and_records_latency(tmp_path: Path) -> None:
     case_dir = tmp_path / "division_by_zero"
     case_dir.mkdir()
     (case_dir / "patch.diff").write_text(
-        "diff --git a/calculator.py b/calculator.py\n+return completed / total\n"
+        """diff --git a/calculator.py b/calculator.py
+--- a/calculator.py
++++ b/calculator.py
+@@ -6 +6 @@
+-return 0
++return completed / total
+"""
     )
     (case_dir / "expected.json").write_text(
         '{"bug_present": true, "category": "division_by_zero", '

@@ -2,10 +2,9 @@ diff --git a/downloads.py b/downloads.py
 index 1111111..2222222 100644
 --- a/downloads.py
 +++ b/downloads.py
-@@ -5,5 +5,2 @@ def download_path(root: Path, requested: str) -> Path:
+@@ -5,4 +5 @@ def download_path(root: Path, requested: str) -> Path:
 -    candidate = (root / requested).resolve()
 -    if root.resolve() not in candidate.parents:
 -        raise ValueError("Path escapes download root")
 -    return candidate
 +    return root / requested
-

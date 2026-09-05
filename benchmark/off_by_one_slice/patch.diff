@@ -2,7 +2,6 @@ diff --git a/pagination.py b/pagination.py
 index 1111111..2222222 100644
 --- a/pagination.py
 +++ b/pagination.py
-@@ -3,2 +3,2 @@ def first_page(items: list[str], page_size: int) -> list[str]:
+@@ -3 +3 @@ def first_page(items: list[str], page_size: int) -> list[str]:
 -    return items[:page_size]
 +    return items[: page_size + 1]
-

@@ -2,7 +2,7 @@ diff --git a/config.py b/config.py
 index 1111111..2222222 100644
 --- a/config.py
 +++ b/config.py
-@@ -3,7 +3,3 @@ def read_config(path: str) -> str:
+@@ -3,5 +3,2 @@ def read_config(path: str) -> str:
 -    stream = open(path, encoding="utf-8")
 -    try:
 -        return stream.read()
@@ -10,4 +10,3 @@ index 1111111..2222222 100644
 -        stream.close()
 +    with open(path, encoding="utf-8") as stream:
 +        return stream.read()
-
