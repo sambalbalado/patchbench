@@ -1,0 +1,8 @@
+{
+  "bug_present": false,
+  "category": null,
+  "file": null,
+  "line": null,
+  "explanation": "For the documented JSON session format, JSON decoding removes code-execution risk without losing behavior."
+}
+

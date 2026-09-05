@@ -1,0 +1,11 @@
+diff --git a/signatures.py b/signatures.py
+index 1111111..2222222 100644
+--- a/signatures.py
++++ b/signatures.py
+@@ -1,5 +1,7 @@
++import hmac
++
+ def signature_matches(provided: str, expected: str) -> bool:
+-    return provided == expected
++    return hmac.compare_digest(provided, expected)
+

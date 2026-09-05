@@ -1,0 +1,12 @@
+diff --git a/tokens.py b/tokens.py
+index 1111111..2222222 100644
+--- a/tokens.py
++++ b/tokens.py
+@@ -1,5 +1,5 @@
+-import secrets
++import random
+ 
+ def reset_token() -> str:
+-    return secrets.token_urlsafe(32)
++    return str(random.randint(0, 999999))
+

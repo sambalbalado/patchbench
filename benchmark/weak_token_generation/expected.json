@@ -1,0 +1,8 @@
+{
+  "bug_present": true,
+  "category": "weak_randomness",
+  "file": "tokens.py",
+  "line": 4,
+  "explanation": "A six-digit value from the non-cryptographic random module is predictable and brute-forceable."
+}
+

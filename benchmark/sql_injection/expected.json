@@ -1,0 +1,8 @@
+{
+  "bug_present": true,
+  "category": "sql_injection",
+  "file": "users.py",
+  "line": 4,
+  "explanation": "Interpolating an untrusted email into SQL lets crafted input alter the query."
+}
+

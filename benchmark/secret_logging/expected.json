@@ -1,0 +1,8 @@
+{
+  "bug_present": true,
+  "category": "sensitive_data_exposure",
+  "file": "login.py",
+  "line": 9,
+  "explanation": "The new log statement writes users' plaintext passwords to application logs."
+}
+

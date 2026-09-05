@@ -1,0 +1,12 @@
+diff --git a/session.py b/session.py
+index 1111111..2222222 100644
+--- a/session.py
++++ b/session.py
+@@ -1,6 +1,6 @@
+-import pickle
++import json
+ 
+ def decode_session(payload: bytes) -> dict:
+-    return pickle.loads(payload)
++    return json.loads(payload.decode("utf-8"))
+

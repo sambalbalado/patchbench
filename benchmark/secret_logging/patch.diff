@@ -1,0 +1,8 @@
+diff --git a/login.py b/login.py
+index 1111111..2222222 100644
+--- a/login.py
++++ b/login.py
+@@ -9,3 +9,4 @@ def authenticate(username: str, password: str) -> bool:
++    logger.info("Login attempt username=%s password=%s", username, password)
+     return identity_provider.authenticate(username, password)
+

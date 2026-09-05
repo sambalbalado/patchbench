@@ -1,0 +1,11 @@
+diff --git a/assets.py b/assets.py
+index 1111111..2222222 100644
+--- a/assets.py
++++ b/assets.py
+@@ -4,3 +4,6 @@ def asset_path(root: Path, requested: str) -> Path:
+-    return root / requested
++    candidate = (root / requested).resolve()
++    if root.resolve() not in candidate.parents:
++        raise ValueError("Path escapes asset root")
++    return candidate
+

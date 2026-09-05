@@ -106,5 +106,113 @@
     "explanation": "Membership in these two literals is behaviorally equivalent.",
     "suggested_test": "Check complete, failed, and an active status.",
     "confidence": 0.99
+  },
+  "sql_injection": {
+    "bug_found": true,
+    "category": "sql_injection",
+    "file": "users.py",
+    "line": 4,
+    "explanation": "The email is interpolated directly into SQL.",
+    "suggested_test": "Search using an email containing a quote and SQL control text.",
+    "confidence": 0.99
+  },
+  "path_traversal": {
+    "bug_found": true,
+    "category": "path_traversal",
+    "file": "downloads.py",
+    "line": 5,
+    "explanation": "Parent-directory components can escape the configured root.",
+    "suggested_test": "Reject a requested path beginning with ../.",
+    "confidence": 0.99
+  },
+  "authorization_bypass": {
+    "bug_found": true,
+    "category": "authorization_bypass",
+    "file": "admin.py",
+    "line": 6,
+    "explanation": "Any caller can now perform the admin-only deletion.",
+    "suggested_test": "Verify a non-admin actor receives PermissionError.",
+    "confidence": 0.99
+  },
+  "secret_logging": {
+    "bug_found": true,
+    "category": "sensitive_data_exposure",
+    "file": "login.py",
+    "line": 9,
+    "explanation": "Plaintext passwords are emitted to logs.",
+    "suggested_test": "Capture logs during login and assert the password is absent.",
+    "confidence": 0.99
+  },
+  "unsafe_deserialization": {
+    "bug_found": true,
+    "category": "unsafe_deserialization",
+    "file": "preferences.py",
+    "line": 4,
+    "explanation": "pickle can execute code while loading an attacker-controlled payload.",
+    "suggested_test": "Reject a crafted pickle payload without executing its reducer.",
+    "confidence": 0.99
+  },
+  "weak_token_generation": {
+    "bug_found": true,
+    "category": "weak_randomness",
+    "file": "tokens.py",
+    "line": 4,
+    "explanation": "The reset token has low entropy and uses a predictable generator.",
+    "suggested_test": "Assert reset tokens use the cryptographic secrets module and sufficient entropy.",
+    "confidence": 0.99
+  },
+  "safe_parameterized_query": {
+    "bug_found": false,
+    "category": null,
+    "file": null,
+    "line": null,
+    "explanation": "The query is safely parameterized with the same lookup semantics.",
+    "suggested_test": "Look up ordinary SKUs and a SKU containing a quote.",
+    "confidence": 0.99
+  },
+  "safe_path_validation": {
+    "bug_found": false,
+    "category": null,
+    "file": null,
+    "line": null,
+    "explanation": "The change adds path traversal protection.",
+    "suggested_test": "Accept an in-root asset and reject ../secret.",
+    "confidence": 0.99
+  },
+  "safe_constant_time_compare": {
+    "bug_found": false,
+    "category": null,
+    "file": null,
+    "line": null,
+    "explanation": "The comparison remains an equality check for string signatures.",
+    "suggested_test": "Check matching and non-matching signatures.",
+    "confidence": 0.98
+  },
+  "safe_redacted_logging": {
+    "bug_found": false,
+    "category": null,
+    "file": null,
+    "line": null,
+    "explanation": "Sensitive log output is reduced without changing the gateway call.",
+    "suggested_test": "Verify logs contain only the final four digits.",
+    "confidence": 0.99
+  },
+  "safe_json_deserialization": {
+    "bug_found": false,
+    "category": null,
+    "file": null,
+    "line": null,
+    "explanation": "The documented JSON payload is decoded without unsafe pickle loading.",
+    "suggested_test": "Decode a representative UTF-8 JSON session.",
+    "confidence": 0.97
+  },
+  "safe_secrets_token": {
+    "bug_found": false,
+    "category": null,
+    "file": null,
+    "line": null,
+    "explanation": "Invitation codes remain strings and gain cryptographic randomness.",
+    "suggested_test": "Generate many codes and validate their type and uniqueness.",
+    "confidence": 0.98
   }
 }

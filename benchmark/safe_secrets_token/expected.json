@@ -1,0 +1,7 @@
+{
+  "bug_present": false,
+  "category": null,
+  "file": null,
+  "line": null,
+  "explanation": "The stronger invitation code remains a string and provides more unpredictable tokens."
+}
