@@ -71,6 +71,25 @@ benchmark/
 Safe patches are deliberately included. Without negative examples, a reviewer that reports a bug
 for every change could appear successful.
 
+The bundled benchmark now contains 24 Python patches, balanced between 12 defect-introducing and
+12 safe changes. The positive cases cover distinct correctness, reliability, and security
+categories including off-by-one behavior, mutable defaults, missing awaits, data loss, cache-key
+collisions, SQL injection, path traversal, authorization bypass, sensitive-data exposure, unsafe
+deserialization, and weak randomness. The safe cases include ordinary refactors as well as
+security-hardening changes, which tests whether a reviewer understands the direction of a change
+rather than merely reacting to security-sensitive code.
+
+### Adding a benchmark case
+
+Create a uniquely named directory under `benchmark/` and add both files. For a positive case,
+`expected.json` must provide `category`, `file`, and `line`; the location must identify an added
+line in `patch.diff`. For a safe case, all three fields must be `null`. Every patch must be a
+well-formed unified diff with accurate hunk line counts.
+
+The loader validates these rules before any prediction is scored or paid model request is made.
+Add a matching entry to `examples/predictions.json` if the case should work with the default
+offline demonstration.
+
 ## Development checks
 
 All automated model tests use mocked clients and make no network or paid API calls.
@@ -84,6 +103,9 @@ ruff check .
 
 - Offline and live execution are separate CLI modes but share the same loader, schema, evaluator,
   and output format.
+- The bundled corpus is balanced between positive and negative cases and uses a distinct category
+  for each current positive case.
+- Ground-truth file and line labels are checked against parsed unified diffs during loading.
 - `ReviewResult` is the single response contract. Extra fields and invalid field values are
   rejected rather than silently accepted.
 - The model name is environment configuration so experiments can change models without code edits.
@@ -93,11 +115,13 @@ ruff check .
 
 ## Roadmap
 
-1. Expand to 20–30 labeled Python patches.
-2. Record prompt version, token usage, and estimated cost.
-3. Execute cases concurrently with bounded retries and timeouts.
-4. Persist experiment runs through FastAPI and SQLite/Postgres.
-5. Add a small dashboard for comparing configurations.
+The first dataset milestone is complete: PatchBench includes 24 validated and balanced labeled
+Python patches. Next steps are:
+
+1. Record prompt version, token usage, and estimated cost.
+2. Execute cases concurrently with bounded retries and timeouts.
+3. Persist experiment runs through FastAPI and SQLite/Postgres.
+4. Add a small dashboard for comparing configurations.
 
 ## License
 
