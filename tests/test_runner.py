@@ -2,7 +2,7 @@ from pathlib import Path
 
 from patchbench.openai_reviewer import TimedReview
 from patchbench.runner import run, run_openai
-from patchbench.schemas import ReviewResult
+from patchbench.schemas import ReviewResult, TokenPricing
 
 
 def test_example_benchmark_scores_perfectly() -> None:
@@ -11,9 +11,24 @@ def test_example_benchmark_scores_perfectly() -> None:
     assert summary.detection_accuracy == 1.0
     assert summary.false_positive_rate == 0.0
     assert summary.total_accuracy == 1.0
+    assert summary.average_latency_ms is None
+    assert summary.total_input_tokens is None
+    assert summary.total_estimated_cost_usd is None
+    assert summary.usage_available_cases == 0
+    assert summary.cost_estimated_cases == 0
 
 
 class FakeReviewer:
+    model = "gpt-5-mini"
+    prompt_version = "review-v1"
+    pricing = TokenPricing(
+        input_usd_per_million=0.25,
+        cached_input_usd_per_million=0.025,
+        output_usd_per_million=2.0,
+        source="https://example.com/pricing",
+        as_of="2026-09-10",
+    )
+
     def review_patch(self, patch: str) -> TimedReview:
         bug_found = "completed / total" in patch
         return TimedReview(
@@ -26,6 +41,10 @@ class FakeReviewer:
                 confidence=0.9,
             ),
             latency_ms=12.5,
+            input_tokens=100,
+            cached_input_tokens=20,
+            output_tokens=25,
+            estimated_cost_usd=0.0000705,
         )
 
 
@@ -50,3 +69,12 @@ def test_live_mode_reviews_patches_and_records_latency(tmp_path: Path) -> None:
 
     assert summary.total_accuracy == 1.0
     assert [score.latency_ms for score in summary.cases] == [12.5]
+    assert summary.model == "gpt-5-mini"
+    assert summary.prompt_version == "review-v1"
+    assert summary.average_latency_ms == 12.5
+    assert summary.total_input_tokens == 100
+    assert summary.total_cached_input_tokens == 20
+    assert summary.total_output_tokens == 25
+    assert summary.total_estimated_cost_usd == 0.0000705
+    assert summary.usage_available_cases == 1
+    assert summary.cost_estimated_cases == 1

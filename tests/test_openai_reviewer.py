@@ -26,23 +26,28 @@ def valid_review() -> ReviewResult:
 
 
 class FakeResponses:
-    def __init__(self, output_parsed=None, error: Exception | None = None) -> None:
+    def __init__(self, output_parsed=None, error: Exception | None = None, usage=None) -> None:
         self.output_parsed = output_parsed
         self.error = error
+        self.usage = usage
         self.arguments = {}
 
     def parse(self, **kwargs):
         self.arguments = kwargs
         if self.error:
             raise self.error
-        return SimpleNamespace(output_parsed=self.output_parsed)
+        return SimpleNamespace(output_parsed=self.output_parsed, usage=self.usage)
 
 
-def reviewer_with(responses: FakeResponses, times=(10.0, 10.25)) -> OpenAIReviewer:
+def reviewer_with(
+    responses: FakeResponses,
+    times=(10.0, 10.25),
+    model: str = "test-model",
+) -> OpenAIReviewer:
     clock_values = iter(times)
     client = SimpleNamespace(responses=responses)
     return OpenAIReviewer(
-        model="test-model",
+        model=model,
         api_key="test-key",
         client=client,
         clock=lambda: next(clock_values),
@@ -60,6 +65,40 @@ def test_requests_and_validates_structured_review_with_latency() -> None:
     assert responses.arguments["store"] is False
     assert responses.arguments["text_format"] is ReviewResult
     assert responses.arguments["input"].startswith("diff --git")
+
+
+def test_records_usage_and_estimates_known_model_cost() -> None:
+    usage = SimpleNamespace(
+        input_tokens=100,
+        input_tokens_details=SimpleNamespace(cached_tokens=20),
+        output_tokens=25,
+    )
+    responses = FakeResponses(output_parsed=valid_review(), usage=usage)
+
+    result = reviewer_with(responses, model="gpt-5-mini").review_patch("patch")
+
+    assert result.input_tokens == 100
+    assert result.cached_input_tokens == 20
+    assert result.output_tokens == 25
+    assert result.estimated_cost_usd == pytest.approx(0.0000705)
+
+
+def test_handles_missing_usage_and_unknown_pricing_explicitly() -> None:
+    no_usage = reviewer_with(FakeResponses(output_parsed=valid_review())).review_patch("patch")
+    unknown_pricing = reviewer_with(
+        FakeResponses(
+            output_parsed=valid_review(),
+            usage=SimpleNamespace(
+                input_tokens=100,
+                input_tokens_details=SimpleNamespace(cached_tokens=0),
+                output_tokens=25,
+            ),
+        )
+    ).review_patch("patch")
+
+    assert (no_usage.input_tokens, no_usage.output_tokens) == (None, None)
+    assert no_usage.estimated_cost_usd is None
+    assert unknown_pricing.estimated_cost_usd is None
 
 
 def test_reports_timeout_with_elapsed_latency() -> None:

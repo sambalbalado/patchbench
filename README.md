@@ -4,8 +4,8 @@ PatchBench is a reproducible evaluation harness for AI code reviewers. It answer
 question: **does an AI reviewer find real defects without inventing new ones?**
 
 It runs labeled code patches through either saved predictions or a real OpenAI model, then measures
-detection accuracy, category accuracy, location accuracy, false-positive rate, and per-request
-latency.
+detection accuracy, category accuracy, location accuracy, false-positive rate, latency, token usage,
+and estimated cost.
 
 ## Setup
 
@@ -48,8 +48,17 @@ OpenAI SDK, and is never written to results or printed.
 
 Live mode sends each `patch.diff` to the OpenAI Responses API synchronously. The SDK constrains the
 response to the existing `ReviewResult` Pydantic schema, and PatchBench validates it again before
-scoring. Requests set `store=False`, and each case in the JSON summary includes `latency_ms`;
-offline cases use `null` because no model request occurred.
+scoring. Requests set `store=False`, and each case in the JSON summary includes `latency_ms`, input
+tokens, cached input tokens, output tokens, and estimated cost. The summary records the model,
+prompt version, average latency, aggregate token counts, total estimated cost, and coverage counts
+showing how many cases supplied usage and pricing data. Offline cases use `null` for operational
+metrics because no model request occurred.
+
+Cost estimates use the standard per-million-token rates published in the
+[official GPT-5 Mini model documentation](https://developers.openai.com/api/docs/models/gpt-5-mini),
+recorded in the output with their source and an `as_of` date. PatchBench currently estimates cost
+for `gpt-5-mini` and `gpt-5-mini-2025-08-07`. Other models still report token usage, but cost remains
+`null` until a reviewed pricing entry is added; this avoids silently applying the wrong rate.
 
 The request timeout is 60 seconds. A timeout, API failure, refusal/missing structured output, or
 schema validation failure stops the run with the case ID, a clear error, and elapsed request time.
@@ -109,6 +118,7 @@ ruff check .
 - `ReviewResult` is the single response contract. Extra fields and invalid field values are
   rejected rather than silently accepted.
 - The model name is environment configuration so experiments can change models without code edits.
+- Prompt and pricing versions are included in live summaries so benchmark runs remain interpretable.
 - Latency uses a monotonic clock around every request and is retained even in raised request errors.
 - The implementation is deliberately synchronous and in-memory; there is no frontend, database,
   or worker system yet.
@@ -118,10 +128,9 @@ ruff check .
 The first dataset milestone is complete: PatchBench includes 24 validated and balanced labeled
 Python patches. Next steps are:
 
-1. Record prompt version, token usage, and estimated cost.
-2. Execute cases concurrently with bounded retries and timeouts.
-3. Persist experiment runs through FastAPI and SQLite/Postgres.
-4. Add a small dashboard for comparing configurations.
+1. Execute cases concurrently with bounded retries and timeouts.
+2. Persist experiment runs through FastAPI and SQLite/Postgres.
+3. Add a small dashboard for comparing configurations.
 
 ## License
 

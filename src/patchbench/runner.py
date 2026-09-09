@@ -29,9 +29,22 @@ def run_openai(benchmark_dir: Path, reviewer: OpenAIReviewer):
         except ModelReviewError as exc:
             raise type(exc)(f"Case {case.case_id}: {exc.detail}", exc.latency_ms) from exc
         scores.append(
-            score_case(case, timed_review.review, latency_ms=timed_review.latency_ms)
+            score_case(
+                case,
+                timed_review.review,
+                latency_ms=timed_review.latency_ms,
+                input_tokens=timed_review.input_tokens,
+                cached_input_tokens=timed_review.cached_input_tokens,
+                output_tokens=timed_review.output_tokens,
+                estimated_cost_usd=timed_review.estimated_cost_usd,
+            )
         )
-    return summarize(scores)
+    return summarize(
+        scores,
+        model=getattr(reviewer, "model", None),
+        prompt_version=getattr(reviewer, "prompt_version", None),
+        pricing=getattr(reviewer, "pricing", None),
+    )
 
 
 def main() -> None:

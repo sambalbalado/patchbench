@@ -6,19 +6,35 @@ from typing import Any
 import openai
 from pydantic import ValidationError
 
-from patchbench.schemas import ReviewResult
+from patchbench.schemas import ReviewResult, TokenPricing
 
+REVIEW_PROMPT_VERSION = "review-v1"
 REVIEW_INSTRUCTIONS = """You are a careful code reviewer. Review only the supplied patch.
 Report a bug only when the patch introduces a concrete defect. Use the path and new-file line
 number from the diff. Use a concise snake_case category. If the patch is safe, set bug_found to
 false and do not invent a finding. Explain the decision and suggest a focused test when useful.
 """
 
+OPENAI_PRICING = {
+    model: TokenPricing(
+        input_usd_per_million=0.25,
+        cached_input_usd_per_million=0.025,
+        output_usd_per_million=2.00,
+        source="https://developers.openai.com/api/docs/models/gpt-5-mini",
+        as_of="2026-09-10",
+    )
+    for model in ("gpt-5-mini", "gpt-5-mini-2025-08-07")
+}
+
 
 @dataclass(frozen=True)
 class TimedReview:
     review: ReviewResult
     latency_ms: float
+    input_tokens: int | None = None
+    cached_input_tokens: int | None = None
+    output_tokens: int | None = None
+    estimated_cost_usd: float | None = None
 
 
 class ModelReviewError(RuntimeError):
@@ -60,6 +76,8 @@ class OpenAIReviewer:
             raise ValueError("timeout_seconds must be positive")
 
         self.model = model
+        self.prompt_version = REVIEW_PROMPT_VERSION
+        self.pricing = OPENAI_PRICING.get(model)
         self._clock = clock
         self._client = client or openai.OpenAI(
             api_key=api_key, timeout=timeout_seconds, max_retries=0
@@ -97,7 +115,35 @@ class OpenAIReviewer:
                 "OpenAI response did not match ReviewResult", self._elapsed_ms(started_at)
             ) from exc
 
-        return TimedReview(review=review, latency_ms=self._elapsed_ms(started_at))
+        input_tokens, cached_input_tokens, output_tokens = self._extract_usage(response)
+        estimated_cost_usd = None
+        if self.pricing is not None and input_tokens is not None and output_tokens is not None:
+            estimated_cost_usd = self.pricing.estimate_cost(
+                input_tokens=input_tokens,
+                cached_input_tokens=cached_input_tokens or 0,
+                output_tokens=output_tokens,
+            )
+
+        return TimedReview(
+            review=review,
+            latency_ms=self._elapsed_ms(started_at),
+            input_tokens=input_tokens,
+            cached_input_tokens=cached_input_tokens,
+            output_tokens=output_tokens,
+            estimated_cost_usd=estimated_cost_usd,
+        )
+
+    @staticmethod
+    def _extract_usage(response: Any) -> tuple[int | None, int | None, int | None]:
+        usage = getattr(response, "usage", None)
+        if usage is None:
+            return None, None, None
+
+        input_tokens = getattr(usage, "input_tokens", None)
+        output_tokens = getattr(usage, "output_tokens", None)
+        input_details = getattr(usage, "input_tokens_details", None)
+        cached_input_tokens = getattr(input_details, "cached_tokens", 0)
+        return input_tokens, cached_input_tokens, output_tokens
 
     def _elapsed_ms(self, started_at: float) -> float:
         return (self._clock() - started_at) * 1000

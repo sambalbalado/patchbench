@@ -39,6 +39,30 @@ class BenchmarkCase(BaseModel):
     expected: ExpectedFinding
 
 
+class TokenPricing(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    input_usd_per_million: float = Field(ge=0)
+    cached_input_usd_per_million: float = Field(ge=0)
+    output_usd_per_million: float = Field(ge=0)
+    source: str
+    as_of: str
+
+    def estimate_cost(
+        self,
+        *,
+        input_tokens: int,
+        cached_input_tokens: int,
+        output_tokens: int,
+    ) -> float:
+        uncached_input_tokens = input_tokens - cached_input_tokens
+        return (
+            uncached_input_tokens * self.input_usd_per_million
+            + cached_input_tokens * self.cached_input_usd_per_million
+            + output_tokens * self.output_usd_per_million
+        ) / 1_000_000
+
+
 class CaseScore(BaseModel):
     case_id: str
     detection_correct: bool
@@ -49,6 +73,10 @@ class CaseScore(BaseModel):
     points_earned: int
     points_possible: int
     latency_ms: float | None = Field(default=None, ge=0)
+    input_tokens: int | None = Field(default=None, ge=0)
+    cached_input_tokens: int | None = Field(default=None, ge=0)
+    output_tokens: int | None = Field(default=None, ge=0)
+    estimated_cost_usd: float | None = Field(default=None, ge=0)
 
     @property
     def accuracy(self) -> float:
@@ -60,3 +88,13 @@ class BenchmarkSummary(BaseModel):
     detection_accuracy: float
     false_positive_rate: float
     total_accuracy: float
+    model: str | None = None
+    prompt_version: str | None = None
+    pricing: TokenPricing | None = None
+    average_latency_ms: float | None = Field(default=None, ge=0)
+    total_input_tokens: int | None = Field(default=None, ge=0)
+    total_cached_input_tokens: int | None = Field(default=None, ge=0)
+    total_output_tokens: int | None = Field(default=None, ge=0)
+    total_estimated_cost_usd: float | None = Field(default=None, ge=0)
+    usage_available_cases: int = Field(default=0, ge=0)
+    cost_estimated_cases: int = Field(default=0, ge=0)
