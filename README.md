@@ -123,14 +123,25 @@ ruff check .
 - The implementation is deliberately synchronous and in-memory; there is no frontend, database,
   or worker system yet.
 
+## First real baseline
+
+The first complete live run evaluated all 24 bundled cases with `gpt-5-mini` and prompt
+`review-v1`. It detected all 12 seeded bugs, produced four false positives across the 12 safe
+patches, completed without API failures, and cost an estimated $0.04373. See the
+[baseline report](docs/baseline-2026-09-11.md) and
+[machine-readable result](results/gpt-5-mini-review-v1-baseline-2026-09-11.json) for the full
+metrics and case-level scores.
+
 ## Roadmap
 
-The first dataset milestone is complete: PatchBench includes 24 validated and balanced labeled
-Python patches. Next steps are:
+Milestone 1 is complete: PatchBench has a real-model adapter, a validated and balanced 24-case
+dataset, operational metrics, and a recorded baseline. Next steps are:
 
-1. Execute cases concurrently with bounded retries and timeouts.
-2. Persist experiment runs through FastAPI and SQLite/Postgres.
-3. Add a small dashboard for comparing configurations.
+1. Add bounded concurrency and preserve per-case failures in the final result.
+2. Strengthen timeout, retry, and invalid-response behavior.
+3. Refine the prompt and category labels using the baseline's false positives.
+4. Persist experiment runs through FastAPI and SQLite/Postgres.
+5. Add a small dashboard for comparing configurations.
 
 ## License
 
