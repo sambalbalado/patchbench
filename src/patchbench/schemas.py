@@ -98,3 +98,52 @@ class BenchmarkSummary(BaseModel):
     total_estimated_cost_usd: float | None = Field(default=None, ge=0)
     usage_available_cases: int = Field(default=0, ge=0)
     cost_estimated_cases: int = Field(default=0, ge=0)
+
+
+class CaseFailure(BaseModel):
+    case_id: str
+    error_type: str
+    message: str
+    latency_ms: float | None = Field(default=None, ge=0)
+
+
+class BenchmarkRun(BaseModel):
+    case_order: list[str]
+    requested_cases: int = Field(ge=0)
+    completed_cases: int = Field(ge=0)
+    failed_cases: int = Field(ge=0)
+    skipped_cases: int = Field(ge=0)
+    failures: list[CaseFailure]
+    skipped_case_ids: list[str]
+    summary: BenchmarkSummary | None
+
+    @model_validator(mode="after")
+    def validate_case_accounting(self) -> "BenchmarkRun":
+        completed_ids = [score.case_id for score in self.summary.cases] if self.summary else []
+        failed_ids = [failure.case_id for failure in self.failures]
+        reported_ids = completed_ids + failed_ids + self.skipped_case_ids
+
+        expected_counts = (
+            len(self.case_order),
+            len(completed_ids),
+            len(failed_ids),
+            len(self.skipped_case_ids),
+        )
+        actual_counts = (
+            self.requested_cases,
+            self.completed_cases,
+            self.failed_cases,
+            self.skipped_cases,
+        )
+        if actual_counts != expected_counts:
+            raise ValueError("Benchmark run counts must match their case collections")
+        if len(set(self.case_order)) != len(self.case_order):
+            raise ValueError("Benchmark case order cannot contain duplicates")
+        if len(reported_ids) != len(set(reported_ids)) or set(reported_ids) != set(self.case_order):
+            raise ValueError("Every requested case must be completed, failed, or skipped once")
+
+        position = {case_id: index for index, case_id in enumerate(self.case_order)}
+        for group in (completed_ids, failed_ids, self.skipped_case_ids):
+            if group != sorted(group, key=position.__getitem__):
+                raise ValueError("Case collections must preserve benchmark order")
+        return self

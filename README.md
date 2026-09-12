@@ -39,20 +39,27 @@ example model can be replaced without changing code.
 ```bash
 export OPENAI_API_KEY="your-api-key"
 export PATCHBENCH_MODEL="gpt-5-mini"
-patchbench --benchmark benchmark --openai
+patchbench --benchmark benchmark --openai --max-concurrency 4
 ```
 
 You can copy `.env.example` as a reminder of the required variable names, but PatchBench does not
 load `.env` files itself. The API key is read from the process environment, passed directly to the
 OpenAI SDK, and is never written to results or printed.
 
-Live mode sends each `patch.diff` to the OpenAI Responses API synchronously. The SDK constrains the
-response to the existing `ReviewResult` Pydantic schema, and PatchBench validates it again before
-scoring. Requests set `store=False`, and each case in the JSON summary includes `latency_ms`, input
-tokens, cached input tokens, output tokens, and estimated cost. The summary records the model,
-prompt version, average latency, aggregate token counts, total estimated cost, and coverage counts
-showing how many cases supplied usage and pricing data. Offline cases use `null` for operational
-metrics because no model request occurred.
+Live mode sends each `patch.diff` to the OpenAI Responses API with bounded concurrency. Four
+requests may run at once by default; `--max-concurrency` accepts values from 1 through 8. This
+conservative ceiling speeds up experiments without allowing an accidental burst of unbounded paid
+requests. The SDK constrains each response to the existing `ReviewResult` Pydantic schema, and
+PatchBench validates it again before scoring. Requests set `store=False`, and each completed case
+includes `latency_ms`, input tokens, cached input tokens, output tokens, and estimated cost.
+
+The live JSON result records the original `case_order`, separate completed, failed, and skipped
+counts, structured per-case failures, skipped case IDs, and an aggregate summary for completed
+cases. Workers may finish in any order, but completed scores and failures are restored to benchmark
+order before output. One failed request therefore does not discard successful reviews from other
+cases. The summary records the model, prompt version, average latency, aggregate token counts, total
+estimated cost, and coverage counts showing how many completed cases supplied usage and pricing
+data. Offline cases use `null` for operational metrics because no model request occurred.
 
 Cost estimates use the standard per-million-token rates published in the
 [official GPT-5 Mini model documentation](https://developers.openai.com/api/docs/models/gpt-5-mini),
@@ -61,10 +68,10 @@ for `gpt-5-mini` and `gpt-5-mini-2025-08-07`. Other models still report token us
 `null` until a reviewed pricing entry is added; this avoids silently applying the wrong rate.
 
 The request timeout is 60 seconds. A timeout, API failure, refusal/missing structured output, or
-schema validation failure stops the run with the case ID, a clear error, and elapsed request time.
-There are intentionally no retries or concurrent workers in this milestone, so paid calls are
-predictable and failures are visible. Live mode makes one paid model request per discovered
-benchmark case, so review the benchmark directory before running it.
+schema validation failure becomes a structured failure containing its case ID, error type, message,
+and elapsed request time when available. There are intentionally no retries yet. Live mode makes one
+paid model request per discovered benchmark case, so review the benchmark directory before running
+it.
 
 ## Benchmark format
 
@@ -120,8 +127,10 @@ ruff check .
 - The model name is environment configuration so experiments can change models without code edits.
 - Prompt and pricing versions are included in live summaries so benchmark runs remain interpretable.
 - Latency uses a monotonic clock around every request and is retained even in raised request errors.
-- The implementation is deliberately synchronous and in-memory; there is no frontend, database,
-  or worker system yet.
+- Live requests use a bounded thread pool because model calls spend most of their time waiting for
+  network I/O; result ordering is reconstructed after workers finish.
+- The implementation remains in-memory; there is no frontend, database, or persistent worker system
+  yet.
 
 ## First real baseline
 
@@ -137,11 +146,10 @@ metrics and case-level scores.
 Milestone 1 is complete: PatchBench has a real-model adapter, a validated and balanced 24-case
 dataset, operational metrics, and a recorded baseline. Next steps are:
 
-1. Add bounded concurrency and preserve per-case failures in the final result.
-2. Strengthen timeout, retry, and invalid-response behavior.
-3. Refine the prompt and category labels using the baseline's false positives.
-4. Persist experiment runs through FastAPI and SQLite/Postgres.
-5. Add a small dashboard for comparing configurations.
+1. Strengthen timeout, retry, and invalid-response behavior.
+2. Refine the prompt and category labels using the baseline's false positives.
+3. Persist experiment runs through FastAPI and SQLite/Postgres.
+4. Add a small dashboard for comparing configurations.
 
 ## License
 
