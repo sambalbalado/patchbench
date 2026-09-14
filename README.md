@@ -39,7 +39,7 @@ example model can be replaced without changing code.
 ```bash
 export OPENAI_API_KEY="your-api-key"
 export PATCHBENCH_MODEL="gpt-5-mini"
-patchbench --benchmark benchmark --openai --max-concurrency 4
+patchbench --benchmark benchmark --openai --max-concurrency 4 --max-retries 1
 ```
 
 You can copy `.env.example` as a reminder of the required variable names, but PatchBench does not
@@ -53,13 +53,22 @@ requests. The SDK constrains each response to the existing `ReviewResult` Pydant
 PatchBench validates it again before scoring. Requests set `store=False`, and each completed case
 includes `latency_ms`, input tokens, cached input tokens, output tokens, and estimated cost.
 
-The live JSON result records the original `case_order`, separate completed, failed, and skipped
-counts, structured per-case failures, skipped case IDs, and an aggregate summary for completed
-cases. Workers may finish in any order, but completed scores and failures are restored to benchmark
-order before output. One failed request therefore does not discard successful reviews from other
-cases. The summary records the model, prompt version, average latency, aggregate token counts, total
-estimated cost, and coverage counts showing how many completed cases supplied usage and pricing
-data. Offline cases use `null` for operational metrics because no model request occurred.
+The live JSON result records its concurrency, timeout, and retry configuration; the original
+`case_order`; separate completed, failed, and skipped counts; structured per-case failures; skipped
+case IDs; and an aggregate summary for completed cases. Workers may finish in any order, but
+completed scores and failures are restored to benchmark order before output. One failed request
+therefore does not discard successful reviews from other cases. The summary records the model,
+prompt version, average latency, aggregate token counts, total estimated cost, and coverage counts
+showing how many completed cases supplied usage and pricing data. Offline cases use `null` for
+operational metrics because no model request occurred.
+
+Each live request has a 60-second timeout and allows one retry by default. Retry selection
+and exponential backoff are handled by the official OpenAI Python SDK: connection failures, request
+timeouts, HTTP 408 and 409 responses, rate limits, and server errors are retryable. Invalid
+structured responses, authentication failures, permission errors, and ordinary bad requests are
+not retried. Use `--max-retries 0` for exactly one attempt per case, or `--max-retries 2` when
+reliability matters more than the extra attempt. PatchBench caps this setting at two because retries
+can increase runtime and may create additional paid requests.
 
 Cost estimates use the standard per-million-token rates published in the
 [official GPT-5 Mini model documentation](https://developers.openai.com/api/docs/models/gpt-5-mini),
@@ -67,11 +76,10 @@ recorded in the output with their source and an `as_of` date. PatchBench current
 for `gpt-5-mini` and `gpt-5-mini-2025-08-07`. Other models still report token usage, but cost remains
 `null` until a reviewed pricing entry is added; this avoids silently applying the wrong rate.
 
-The request timeout is 60 seconds. A timeout, API failure, refusal/missing structured output, or
-schema validation failure becomes a structured failure containing its case ID, error type, message,
-and elapsed request time when available. There are intentionally no retries yet. Live mode makes one
-paid model request per discovered benchmark case, so review the benchmark directory before running
-it.
+A timeout, API failure, refusal/missing structured output, or schema validation failure that remains
+after the configured retry policy becomes a structured failure containing its case ID, error type,
+message, and elapsed request time when available. Live mode makes at least one paid model request per
+discovered benchmark case, so review the benchmark directory and retry setting before running it.
 
 ## Benchmark format
 
@@ -129,6 +137,8 @@ ruff check .
 - Latency uses a monotonic clock around every request and is retained even in raised request errors.
 - Live requests use a bounded thread pool because model calls spend most of their time waiting for
   network I/O; result ordering is reconstructed after workers finish.
+- The OpenAI SDK owns retry classification and backoff, while PatchBench limits the retry budget and
+  turns exhausted failures into case-level records.
 - The implementation remains in-memory; there is no frontend, database, or persistent worker system
   yet.
 
@@ -146,10 +156,9 @@ metrics and case-level scores.
 Milestone 1 is complete: PatchBench has a real-model adapter, a validated and balanced 24-case
 dataset, operational metrics, and a recorded baseline. Next steps are:
 
-1. Strengthen timeout, retry, and invalid-response behavior.
-2. Refine the prompt and category labels using the baseline's false positives.
-3. Persist experiment runs through FastAPI and SQLite/Postgres.
-4. Add a small dashboard for comparing configurations.
+1. Refine the prompt and category labels using the baseline's false positives.
+2. Persist experiment runs through FastAPI and SQLite/Postgres.
+3. Add a small dashboard for comparing configurations.
 
 ## License
 

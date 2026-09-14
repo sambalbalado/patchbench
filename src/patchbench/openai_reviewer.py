@@ -9,6 +9,8 @@ from pydantic import ValidationError
 from patchbench.schemas import ReviewResult, TokenPricing
 
 REVIEW_PROMPT_VERSION = "review-v1"
+DEFAULT_MAX_RETRIES = 1
+MAX_RETRIES = 2
 REVIEW_INSTRUCTIONS = """You are a careful code reviewer. Review only the supplied patch.
 Report a bug only when the patch introduces a concrete defect. Use the path and new-file line
 number from the diff. Use a concise snake_case category. If the patch is safe, set bug_found to
@@ -64,6 +66,7 @@ class OpenAIReviewer:
         model: str,
         api_key: str,
         timeout_seconds: float = 60.0,
+        max_retries: int = DEFAULT_MAX_RETRIES,
         *,
         client: Any | None = None,
         clock: Callable[[], float] = perf_counter,
@@ -74,13 +77,17 @@ class OpenAIReviewer:
             raise ValueError("OPENAI_API_KEY must be set for --openai mode")
         if timeout_seconds <= 0:
             raise ValueError("timeout_seconds must be positive")
+        if not 0 <= max_retries <= MAX_RETRIES:
+            raise ValueError(f"max_retries must be between 0 and {MAX_RETRIES}")
 
         self.model = model
         self.prompt_version = REVIEW_PROMPT_VERSION
         self.pricing = OPENAI_PRICING.get(model)
+        self.timeout_seconds = timeout_seconds
+        self.max_retries = max_retries
         self._clock = clock
         self._client = client or openai.OpenAI(
-            api_key=api_key, timeout=timeout_seconds, max_retries=0
+            api_key=api_key, timeout=timeout_seconds, max_retries=max_retries
         )
 
     def review_patch(self, patch: str) -> TimedReview:

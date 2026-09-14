@@ -5,7 +5,12 @@ from pathlib import Path
 
 from patchbench.evaluator import score_case, summarize
 from patchbench.loader import load_cases, load_predictions
-from patchbench.openai_reviewer import ModelReviewError, OpenAIReviewer
+from patchbench.openai_reviewer import (
+    DEFAULT_MAX_RETRIES,
+    MAX_RETRIES,
+    ModelReviewError,
+    OpenAIReviewer,
+)
 from patchbench.schemas import BenchmarkCase, BenchmarkRun, CaseFailure, CaseScore, ReviewResult
 
 DEFAULT_MAX_CONCURRENCY = 4
@@ -83,6 +88,9 @@ def run_openai(
         else None
     )
     return BenchmarkRun(
+        max_concurrency=max_concurrency,
+        timeout_seconds=getattr(reviewer, "timeout_seconds", None),
+        max_retries=getattr(reviewer, "max_retries", None),
         case_order=[case.case_id for case in cases],
         requested_cases=len(cases),
         completed_cases=len(scores),
@@ -106,6 +114,13 @@ def main() -> None:
         default=DEFAULT_MAX_CONCURRENCY,
         help=f"Maximum simultaneous live requests (1-{MAX_CONCURRENCY}, default: %(default)s)",
     )
+    parser.add_argument(
+        "--max-retries",
+        type=int,
+        choices=range(MAX_RETRIES + 1),
+        default=DEFAULT_MAX_RETRIES,
+        help="Retries per live request after a transient failure (0-2, default: %(default)s)",
+    )
     args = parser.parse_args()
     if args.openai:
         model = os.environ.get("PATCHBENCH_MODEL", "")
@@ -113,7 +128,7 @@ def main() -> None:
         try:
             result = run_openai(
                 args.benchmark,
-                OpenAIReviewer(model=model, api_key=api_key),
+                OpenAIReviewer(model=model, api_key=api_key, max_retries=args.max_retries),
                 max_concurrency=args.max_concurrency,
             )
         except (ValueError, ModelReviewError) as exc:

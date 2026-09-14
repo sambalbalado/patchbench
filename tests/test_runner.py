@@ -25,6 +25,8 @@ def test_example_benchmark_scores_perfectly() -> None:
 class FakeReviewer:
     model = "gpt-5-mini"
     prompt_version = "review-v1"
+    timeout_seconds = 60.0
+    max_retries = 1
     pricing = TokenPricing(
         input_usd_per_million=0.25,
         cached_input_usd_per_million=0.025,
@@ -74,6 +76,9 @@ def test_live_mode_reviews_patches_and_records_latency(tmp_path: Path) -> None:
 
     assert summary is not None
     assert result.case_order == ["division_by_zero"]
+    assert result.max_concurrency == 4
+    assert result.timeout_seconds == 60.0
+    assert result.max_retries == 1
     assert (result.requested_cases, result.completed_cases) == (1, 1)
     assert (result.failed_cases, result.skipped_cases) == (0, 0)
     assert result.failures == []

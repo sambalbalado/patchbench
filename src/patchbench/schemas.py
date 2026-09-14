@@ -108,6 +108,9 @@ class CaseFailure(BaseModel):
 
 
 class BenchmarkRun(BaseModel):
+    max_concurrency: int = Field(ge=1)
+    timeout_seconds: float | None = Field(default=None, gt=0)
+    max_retries: int | None = Field(default=None, ge=0)
     case_order: list[str]
     requested_cases: int = Field(ge=0)
     completed_cases: int = Field(ge=0)

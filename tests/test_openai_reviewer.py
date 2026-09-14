@@ -31,8 +31,10 @@ class FakeResponses:
         self.error = error
         self.usage = usage
         self.arguments = {}
+        self.calls = 0
 
     def parse(self, **kwargs):
+        self.calls += 1
         self.arguments = kwargs
         if self.error:
             raise self.error
@@ -49,8 +51,45 @@ def reviewer_with(
     return OpenAIReviewer(
         model=model,
         api_key="test-key",
+        max_retries=0,
         client=client,
         clock=lambda: next(clock_values),
+    )
+
+
+def valid_response_payload() -> dict:
+    return {
+        "id": "resp_test",
+        "created_at": 0.0,
+        "model": "gpt-5-mini",
+        "object": "response",
+        "output": [
+            {
+                "id": "msg_test",
+                "content": [
+                    {
+                        "annotations": [],
+                        "text": valid_review().model_dump_json(),
+                        "type": "output_text",
+                    }
+                ],
+                "role": "assistant",
+                "status": "completed",
+                "type": "message",
+            }
+        ],
+        "parallel_tool_calls": True,
+        "tool_choice": "auto",
+        "tools": [],
+    }
+
+
+def client_with_transport(handler, *, max_retries: int = 1) -> openai.OpenAI:
+    return openai.OpenAI(
+        api_key="test-key",
+        base_url="https://example.test/v1",
+        max_retries=max_retries,
+        http_client=httpx.Client(transport=httpx.MockTransport(handler)),
     )
 
 
@@ -121,8 +160,78 @@ def test_reports_api_error_without_exposing_api_key() -> None:
 
 
 def test_reports_sdk_parse_error_as_invalid_response() -> None:
+    responses = FakeResponses(error=openai.OpenAIError("truncated"))
+
     with pytest.raises(InvalidModelResponse, match="could not be parsed"):
-        reviewer_with(FakeResponses(error=openai.OpenAIError("truncated"))).review_patch("patch")
+        reviewer_with(responses).review_patch("patch")
+
+    assert responses.calls == 1
+
+
+def test_retries_rate_limit_then_succeeds() -> None:
+    calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return httpx.Response(
+                429,
+                headers={"retry-after-ms": "1"},
+                json={"error": {"message": "Slow down", "type": "rate_limit_error"}},
+            )
+        return httpx.Response(200, json=valid_response_payload())
+
+    with client_with_transport(handler) as client:
+        result = OpenAIReviewer(model="gpt-5-mini", api_key="test-key", client=client).review_patch(
+            "patch"
+        )
+
+    assert result.review == valid_review()
+    assert calls == 2
+
+
+def test_reports_retryable_error_after_retry_exhaustion() -> None:
+    calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(
+            500,
+            headers={"retry-after-ms": "1"},
+            json={"error": {"message": "Try again", "type": "server_error"}},
+        )
+
+    with (
+        client_with_transport(handler, max_retries=2) as client,
+        pytest.raises(ModelAPIError, match="Try again"),
+    ):
+        OpenAIReviewer(
+            model="gpt-5-mini", api_key="test-key", max_retries=2, client=client
+        ).review_patch("patch")
+
+    assert calls == 3
+
+
+def test_does_not_retry_non_retryable_bad_request() -> None:
+    calls = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(
+            400,
+            json={"error": {"message": "Invalid request", "type": "invalid_request_error"}},
+        )
+
+    with (
+        client_with_transport(handler) as client,
+        pytest.raises(ModelAPIError, match="Invalid request"),
+    ):
+        OpenAIReviewer(model="gpt-5-mini", api_key="test-key", client=client).review_patch("patch")
+
+    assert calls == 1
 
 
 @pytest.mark.parametrize(
@@ -153,7 +262,13 @@ def test_requires_environment_configuration(model: str, api_key: str, message: s
         OpenAIReviewer(model=model, api_key=api_key)
 
 
-def test_configures_timeout_and_disables_sdk_retries(monkeypatch) -> None:
+@pytest.mark.parametrize("max_retries", [-1, 3])
+def test_rejects_unsafe_retry_limits(max_retries: int) -> None:
+    with pytest.raises(ValueError, match="between 0 and 2"):
+        OpenAIReviewer(model="model", api_key="key", max_retries=max_retries)
+
+
+def test_configures_timeout_and_conservative_sdk_retries(monkeypatch) -> None:
     arguments = {}
 
     def fake_openai(**kwargs):
@@ -162,6 +277,8 @@ def test_configures_timeout_and_disables_sdk_retries(monkeypatch) -> None:
 
     monkeypatch.setattr(openai, "OpenAI", fake_openai)
 
-    OpenAIReviewer(model="test-model", api_key="test-key", timeout_seconds=7.5)
+    reviewer = OpenAIReviewer(model="test-model", api_key="test-key", timeout_seconds=7.5)
 
-    assert arguments == {"api_key": "test-key", "timeout": 7.5, "max_retries": 0}
+    assert arguments == {"api_key": "test-key", "timeout": 7.5, "max_retries": 1}
+    assert reviewer.timeout_seconds == 7.5
+    assert reviewer.max_retries == 1
