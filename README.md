@@ -103,6 +103,12 @@ deserialization, and weak randomness. The safe cases include ordinary refactors 
 security-hardening changes, which tests whether a reviewer understands the direction of a change
 rather than merely reacting to security-sensitive code.
 
+The [benchmark coverage matrix](docs/benchmark-coverage.md) classifies every case by technical
+area and difficulty, records the exact expected finding, and defines deliberate targets for a
+possible 30-case corpus. Its machine-readable source is
+[`benchmark/coverage.json`](benchmark/coverage.json). Tests keep that metadata synchronized with
+the case directories and `expected.json` labels.
+
 ### Adding a benchmark case
 
 Create a uniquely named directory under `benchmark/` and add both files. For a positive case,
@@ -130,6 +136,7 @@ ruff check .
 - The bundled corpus is balanced between positive and negative cases and uses a distinct category
   for each current positive case.
 - Ground-truth file and line labels are checked against parsed unified diffs during loading.
+- Coverage metadata is schema-validated and checked against every bundled case and label.
 - `ReviewResult` is the single response contract. Extra fields and invalid field values are
   rejected rather than silently accepted.
 - The model name is environment configuration so experiments can change models without code edits.
@@ -154,9 +161,11 @@ metrics and case-level scores.
 ## Roadmap
 
 Milestone 1 is complete: PatchBench has a real-model adapter, a validated and balanced 24-case
-dataset, operational metrics, and a recorded baseline. Next steps are:
+dataset, operational metrics, and a recorded baseline. Reliable concurrent execution and bounded
+retries are also complete. Next steps are:
 
-1. Refine the prompt and category labels using the baseline's false positives.
+1. Audit case labels, difficulty assignments, and safe/buggy balance using the coverage matrix and
+   baseline false positives.
 2. Persist experiment runs through FastAPI and SQLite/Postgres.
 3. Add a small dashboard for comparing configurations.
 

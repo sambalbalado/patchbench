@@ -1,0 +1,189 @@
+{
+  "schema_version": 1,
+  "targets": {
+    "total_cases": 30,
+    "safe_cases": 15,
+    "coverage_areas": {
+      "logic": 5,
+      "validation": 4,
+      "security": 12,
+      "resources": 5,
+      "boundaries": 4
+    },
+    "difficulty": {
+      "easy": 10,
+      "medium": 15,
+      "hard": 5
+    }
+  },
+  "cases": [
+    {
+      "case_id": "authorization_bypass",
+      "kind": "buggy",
+      "coverage_area": "security",
+      "difficulty": "medium",
+      "expected_finding": "authorization_bypass"
+    },
+    {
+      "case_id": "cache_key_omits_locale",
+      "kind": "buggy",
+      "coverage_area": "logic",
+      "difficulty": "hard",
+      "expected_finding": "cache_key_collision"
+    },
+    {
+      "case_id": "data_loss_write_mode",
+      "kind": "buggy",
+      "coverage_area": "resources",
+      "difficulty": "easy",
+      "expected_finding": "data_loss"
+    },
+    {
+      "case_id": "division_by_zero",
+      "kind": "buggy",
+      "coverage_area": "boundaries",
+      "difficulty": "easy",
+      "expected_finding": "division_by_zero"
+    },
+    {
+      "case_id": "missing_await",
+      "kind": "buggy",
+      "coverage_area": "resources",
+      "difficulty": "medium",
+      "expected_finding": "missing_await"
+    },
+    {
+      "case_id": "mutable_default_argument",
+      "kind": "buggy",
+      "coverage_area": "resources",
+      "difficulty": "medium",
+      "expected_finding": "mutable_default_argument"
+    },
+    {
+      "case_id": "off_by_one_slice",
+      "kind": "buggy",
+      "coverage_area": "boundaries",
+      "difficulty": "easy",
+      "expected_finding": "off_by_one"
+    },
+    {
+      "case_id": "path_traversal",
+      "kind": "buggy",
+      "coverage_area": "security",
+      "difficulty": "medium",
+      "expected_finding": "path_traversal"
+    },
+    {
+      "case_id": "safe_constant_extraction",
+      "kind": "safe",
+      "coverage_area": "logic",
+      "difficulty": "easy",
+      "expected_finding": null
+    },
+    {
+      "case_id": "safe_constant_time_compare",
+      "kind": "safe",
+      "coverage_area": "security",
+      "difficulty": "medium",
+      "expected_finding": null
+    },
+    {
+      "case_id": "safe_context_manager",
+      "kind": "safe",
+      "coverage_area": "resources",
+      "difficulty": "easy",
+      "expected_finding": null
+    },
+    {
+      "case_id": "safe_enumerate_refactor",
+      "kind": "safe",
+      "coverage_area": "boundaries",
+      "difficulty": "medium",
+      "expected_finding": null
+    },
+    {
+      "case_id": "safe_guard_clause",
+      "kind": "safe",
+      "coverage_area": "validation",
+      "difficulty": "medium",
+      "expected_finding": null
+    },
+    {
+      "case_id": "safe_json_deserialization",
+      "kind": "safe",
+      "coverage_area": "security",
+      "difficulty": "hard",
+      "expected_finding": null
+    },
+    {
+      "case_id": "safe_membership_refactor",
+      "kind": "safe",
+      "coverage_area": "logic",
+      "difficulty": "easy",
+      "expected_finding": null
+    },
+    {
+      "case_id": "safe_parameterized_query",
+      "kind": "safe",
+      "coverage_area": "security",
+      "difficulty": "easy",
+      "expected_finding": null
+    },
+    {
+      "case_id": "safe_path_validation",
+      "kind": "safe",
+      "coverage_area": "security",
+      "difficulty": "medium",
+      "expected_finding": null
+    },
+    {
+      "case_id": "safe_redacted_logging",
+      "kind": "safe",
+      "coverage_area": "security",
+      "difficulty": "medium",
+      "expected_finding": null
+    },
+    {
+      "case_id": "safe_refactor",
+      "kind": "safe",
+      "coverage_area": "logic",
+      "difficulty": "easy",
+      "expected_finding": null
+    },
+    {
+      "case_id": "safe_secrets_token",
+      "kind": "safe",
+      "coverage_area": "security",
+      "difficulty": "medium",
+      "expected_finding": null
+    },
+    {
+      "case_id": "secret_logging",
+      "kind": "buggy",
+      "coverage_area": "security",
+      "difficulty": "easy",
+      "expected_finding": "sensitive_data_exposure"
+    },
+    {
+      "case_id": "sql_injection",
+      "kind": "buggy",
+      "coverage_area": "security",
+      "difficulty": "easy",
+      "expected_finding": "sql_injection"
+    },
+    {
+      "case_id": "unsafe_deserialization",
+      "kind": "buggy",
+      "coverage_area": "security",
+      "difficulty": "medium",
+      "expected_finding": "unsafe_deserialization"
+    },
+    {
+      "case_id": "weak_token_generation",
+      "kind": "buggy",
+      "coverage_area": "security",
+      "difficulty": "medium",
+      "expected_finding": "weak_randomness"
+    }
+  ]
+}

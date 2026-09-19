@@ -1,6 +1,84 @@
+from enum import StrEnum
 from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+
+class CoverageArea(StrEnum):
+    LOGIC = "logic"
+    VALIDATION = "validation"
+    SECURITY = "security"
+    RESOURCES = "resources"
+    BOUNDARIES = "boundaries"
+
+
+class CaseKind(StrEnum):
+    BUGGY = "buggy"
+    SAFE = "safe"
+
+
+class Difficulty(StrEnum):
+    EASY = "easy"
+    MEDIUM = "medium"
+    HARD = "hard"
+
+
+class CoverageTargets(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    total_cases: int = Field(ge=1)
+    safe_cases: int = Field(ge=1)
+    coverage_areas: dict[CoverageArea, int]
+    difficulty: dict[Difficulty, int]
+
+    @model_validator(mode="after")
+    def validate_target_totals(self) -> "CoverageTargets":
+        if set(self.coverage_areas) != set(CoverageArea):
+            raise ValueError("Coverage targets must define every coverage area exactly once")
+        if set(self.difficulty) != set(Difficulty):
+            raise ValueError("Difficulty targets must define every difficulty exactly once")
+        if any(count < 1 for count in (*self.coverage_areas.values(), *self.difficulty.values())):
+            raise ValueError("Coverage target counts must be positive")
+        if sum(self.coverage_areas.values()) != self.total_cases:
+            raise ValueError("Coverage-area targets must sum to total_cases")
+        if sum(self.difficulty.values()) != self.total_cases:
+            raise ValueError("Difficulty targets must sum to total_cases")
+        if self.safe_cases > self.total_cases:
+            raise ValueError("Safe-case target cannot exceed total_cases")
+        return self
+
+
+class CoverageEntry(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    case_id: str
+    kind: CaseKind
+    coverage_area: CoverageArea
+    difficulty: Difficulty
+    expected_finding: str | None
+
+    @model_validator(mode="after")
+    def validate_expected_finding(self) -> "CoverageEntry":
+        if self.kind is CaseKind.BUGGY and not self.expected_finding:
+            raise ValueError("Buggy coverage entries require an expected finding")
+        if self.kind is CaseKind.SAFE and self.expected_finding is not None:
+            raise ValueError("Safe coverage entries cannot declare an expected finding")
+        return self
+
+
+class CoverageMatrix(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    schema_version: int = Field(ge=1)
+    targets: CoverageTargets
+    cases: list[CoverageEntry]
+
+    @model_validator(mode="after")
+    def validate_case_ids(self) -> "CoverageMatrix":
+        case_ids = [case.case_id for case in self.cases]
+        if len(case_ids) != len(set(case_ids)):
+            raise ValueError("Coverage matrix case IDs must be unique")
+        return self
 
 
 class ExpectedFinding(BaseModel):

@@ -2,7 +2,11 @@ import json
 from pathlib import Path
 
 from patchbench.diffs import added_lines_by_file, validate_patch_location
-from patchbench.schemas import BenchmarkCase, ExpectedFinding
+from patchbench.schemas import BenchmarkCase, CoverageMatrix, ExpectedFinding
+
+
+def load_coverage_matrix(path: Path) -> CoverageMatrix:
+    return CoverageMatrix.model_validate_json(path.read_text())
 
 
 def load_cases(benchmark_dir: Path) -> list[BenchmarkCase]:
@@ -25,9 +29,7 @@ def load_cases(benchmark_dir: Path) -> list[BenchmarkCase]:
                 expected_file=expected.file or "",
                 expected_line=expected.line or 0,
             )
-        cases.append(
-            BenchmarkCase(case_id=case_dir.name, patch_path=patch_path, expected=expected)
-        )
+        cases.append(BenchmarkCase(case_id=case_dir.name, patch_path=patch_path, expected=expected))
     if not cases:
         raise ValueError(f"No benchmark cases found in {benchmark_dir}")
     return cases
