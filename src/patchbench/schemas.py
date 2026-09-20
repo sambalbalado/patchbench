@@ -23,6 +23,22 @@ class Difficulty(StrEnum):
     HARD = "hard"
 
 
+class FindingCategory(StrEnum):
+    AUTHORIZATION_BYPASS = "authorization_bypass"
+    CACHE_KEY_COLLISION = "cache_key_collision"
+    DATA_LOSS = "data_loss"
+    DIVISION_BY_ZERO = "division_by_zero"
+    MISSING_AWAIT = "missing_await"
+    MUTABLE_DEFAULT_ARGUMENT = "mutable_default_argument"
+    OFF_BY_ONE = "off_by_one"
+    PATH_TRAVERSAL = "path_traversal"
+    SENSITIVE_DATA_EXPOSURE = "sensitive_data_exposure"
+    SQL_INJECTION = "sql_injection"
+    UNSAFE_DESERIALIZATION = "unsafe_deserialization"
+    WEAK_RANDOMNESS = "weak_randomness"
+    OTHER = "other"
+
+
 class CoverageTargets(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -55,12 +71,12 @@ class CoverageEntry(BaseModel):
     kind: CaseKind
     coverage_area: CoverageArea
     difficulty: Difficulty
-    expected_finding: str | None
+    expected_finding: FindingCategory | None
 
     @model_validator(mode="after")
     def validate_expected_finding(self) -> "CoverageEntry":
-        if self.kind is CaseKind.BUGGY and not self.expected_finding:
-            raise ValueError("Buggy coverage entries require an expected finding")
+        if self.kind is CaseKind.BUGGY and self.expected_finding in (None, FindingCategory.OTHER):
+            raise ValueError("Buggy coverage entries require a specific expected finding")
         if self.kind is CaseKind.SAFE and self.expected_finding is not None:
             raise ValueError("Safe coverage entries cannot declare an expected finding")
         return self
@@ -82,8 +98,10 @@ class CoverageMatrix(BaseModel):
 
 
 class ExpectedFinding(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
     bug_present: bool
-    category: str | None = None
+    category: FindingCategory | None = None
     file: str | None = None
     line: int | None = Field(default=None, ge=1)
     explanation: str
@@ -92,6 +110,8 @@ class ExpectedFinding(BaseModel):
     def require_bug_details(self) -> "ExpectedFinding":
         if self.bug_present and not all((self.category, self.file, self.line)):
             raise ValueError("Bug cases require category, file, and line")
+        if self.bug_present and self.category is FindingCategory.OTHER:
+            raise ValueError("Ground truth requires a specific category")
         if not self.bug_present and any(
             value is not None for value in (self.category, self.file, self.line)
         ):
@@ -103,12 +123,21 @@ class ReviewResult(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     bug_found: bool
-    category: str | None = None
+    category: FindingCategory | None = None
     file: str | None = None
     line: int | None = Field(default=None, ge=1)
     explanation: str
     suggested_test: str | None = None
     confidence: float = Field(ge=0, le=1)
+
+    @model_validator(mode="after")
+    def require_consistent_bug_details(self) -> "ReviewResult":
+        details = (self.category, self.file, self.line)
+        if self.bug_found and not all(details):
+            raise ValueError("Found bugs require category, file, and line")
+        if not self.bug_found and any(value is not None for value in details):
+            raise ValueError("Safe reviews cannot specify category, file, or line")
+        return self
 
 
 class BenchmarkCase(BaseModel):

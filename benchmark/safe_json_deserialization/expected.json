@@ -3,6 +3,5 @@
   "category": null,
   "file": null,
   "line": null,
-  "explanation": "For the documented JSON session format, JSON decoding removes code-execution risk without losing behavior."
+  "explanation": "For the explicit UTF-8 JSON contract, JSON decoding removes code-execution risk without changing valid behavior."
 }
-

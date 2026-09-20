@@ -109,6 +109,10 @@ possible 30-case corpus. Its machine-readable source is
 [`benchmark/coverage.json`](benchmark/coverage.json). Tests keep that metadata synchronized with
 the case directories and `expected.json` labels.
 
+The [2026-09-20 label audit](docs/label-audit-2026-09-20.md) independently reviews all 24 expected
+answers. It also defines the canonical finding-category vocabulary used by the model response
+schema and documents corrections made to ambiguous safe patches.
+
 ### Adding a benchmark case
 
 Create a uniquely named directory under `benchmark/` and add both files. For a positive case,
@@ -137,6 +141,9 @@ ruff check .
   for each current positive case.
 - Ground-truth file and line labels are checked against parsed unified diffs during loading.
 - Coverage metadata is schema-validated and checked against every bundled case and label.
+- Finding categories are enum-constrained so wording differences cannot silently distort scores.
+- Review results require complete finding details for bugs and prohibit contradictory details on
+  safe decisions.
 - `ReviewResult` is the single response contract. Extra fields and invalid field values are
   rejected rather than silently accepted.
 - The model name is environment configuration so experiments can change models without code edits.
@@ -160,12 +167,10 @@ metrics and case-level scores.
 
 ## Roadmap
 
-Milestone 1 is complete: PatchBench has a real-model adapter, a validated and balanced 24-case
-dataset, operational metrics, and a recorded baseline. Reliable concurrent execution and bounded
-retries are also complete. Next steps are:
+Milestones 1–2 are complete, and Milestone 3 now has a coverage matrix and an independent label
+audit. One validation run remains before moving into experiment persistence. Next steps are:
 
-1. Audit case labels, difficulty assignments, and safe/buggy balance using the coverage matrix and
-   baseline false positives.
+1. Run a new `review-v2` baseline and compare it with the historical `review-v1` result.
 2. Persist experiment runs through FastAPI and SQLite/Postgres.
 3. Add a small dashboard for comparing configurations.
 

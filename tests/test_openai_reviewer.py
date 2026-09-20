@@ -95,8 +95,9 @@ def client_with_transport(handler, *, max_retries: int = 1) -> openai.OpenAI:
 
 def test_requests_and_validates_structured_review_with_latency() -> None:
     responses = FakeResponses(output_parsed=valid_review())
+    reviewer = reviewer_with(responses)
 
-    result = reviewer_with(responses).review_patch("diff --git a/a.py b/a.py")
+    result = reviewer.review_patch("diff --git a/a.py b/a.py")
 
     assert result.review == valid_review()
     assert result.latency_ms == pytest.approx(250)
@@ -104,6 +105,7 @@ def test_requests_and_validates_structured_review_with_latency() -> None:
     assert responses.arguments["store"] is False
     assert responses.arguments["text_format"] is ReviewResult
     assert responses.arguments["input"].startswith("diff --git")
+    assert reviewer.prompt_version == "review-v2"
 
 
 def test_records_usage_and_estimates_known_model_cost() -> None:

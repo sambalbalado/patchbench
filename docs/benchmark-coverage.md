@@ -72,8 +72,8 @@ For buggy cases, `Expected finding` is the exact category stored in `expected.js
 ## What the matrix says
 
 The corpus has enough safe changes to measure false positives and strong coverage of security
-review behavior. Its largest gap is validation, followed by hard cases. The next roadmap task should
-audit whether the existing labels and difficulty assignments are fair before deciding whether to
-add any of the six target cases. Any future case must update the machine-readable matrix; automated
-tests reject missing case IDs, duplicated IDs, incorrect safe/buggy classifications, and expected
-findings that drift from `expected.json`.
+review behavior. Its largest gap is validation, followed by hard cases. The
+[2026-09-20 label audit](label-audit-2026-09-20.md) reviewed every expected answer and corrected
+ambiguous safe patches without changing the distribution. Any future case must update the
+machine-readable matrix; automated tests reject missing case IDs, duplicated IDs, incorrect
+safe/buggy classifications, and expected findings that drift from `expected.json`.

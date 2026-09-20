@@ -7,4 +7,4 @@ index 1111111..2222222 100644
 +
  def signature_matches(provided: str, expected: str) -> bool:
 -    return provided == expected
-+    return hmac.compare_digest(provided, expected)
++    return hmac.compare_digest(provided.encode("utf-8"), expected.encode("utf-8"))

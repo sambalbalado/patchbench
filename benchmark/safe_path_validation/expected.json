@@ -3,6 +3,5 @@
   "category": null,
   "file": null,
   "line": null,
-  "explanation": "The patch adds a containment check and continues returning valid paths under the root."
+  "explanation": "The patch keeps returning resolved paths, permits the root itself, and rejects only paths outside it."
 }
-

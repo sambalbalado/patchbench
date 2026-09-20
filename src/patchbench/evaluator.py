@@ -25,9 +25,9 @@ def score_case(
     category_correct = file_correct = line_correct = None
 
     if expected.bug_present:
-        category_correct = review.category == expected.category
-        file_correct = review.file == expected.file
-        line_correct = (
+        category_correct = detection_correct and review.category == expected.category
+        file_correct = detection_correct and review.file == expected.file
+        line_correct = detection_correct and (
             review.line is not None and abs(review.line - expected.line) <= line_tolerance
         )
         checks.extend((category_correct, file_correct, line_correct))

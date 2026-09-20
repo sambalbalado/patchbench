@@ -3,5 +3,5 @@
   "category": null,
   "file": null,
   "line": null,
-  "explanation": "The stronger invitation code remains a string and provides more unpredictable tokens."
+  "explanation": "randbelow preserves the numeric-string range while replacing predictable randomness with a cryptographic source."
 }

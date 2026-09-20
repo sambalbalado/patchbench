@@ -3,6 +3,5 @@
   "category": null,
   "file": null,
   "line": null,
-  "explanation": "compare_digest keeps string equality semantics while reducing timing leakage."
+  "explanation": "UTF-8 encoding preserves string equality while compare_digest reduces timing leakage."
 }
-

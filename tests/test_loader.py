@@ -19,7 +19,7 @@ def write_case(
         json.dumps(
             {
                 "bug_present": True,
-                "category": "incorrect_return",
+                "category": "data_loss",
                 "file": expected_file,
                 "line": expected_line,
                 "explanation": "The return value changed.",

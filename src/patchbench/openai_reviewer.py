@@ -8,13 +8,14 @@ from pydantic import ValidationError
 
 from patchbench.schemas import ReviewResult, TokenPricing
 
-REVIEW_PROMPT_VERSION = "review-v1"
+REVIEW_PROMPT_VERSION = "review-v2"
 DEFAULT_MAX_RETRIES = 1
 MAX_RETRIES = 2
 REVIEW_INSTRUCTIONS = """You are a careful code reviewer. Review only the supplied patch.
 Report a bug only when the patch introduces a concrete defect. Use the path and new-file line
-number from the diff. Use a concise snake_case category. If the patch is safe, set bug_found to
-false and do not invent a finding. Explain the decision and suggest a focused test when useful.
+number from the diff. Select the most specific category allowed by the response schema, using
+other only when none applies. If the patch is safe, set bug_found to false and leave category,
+file, and line null. Explain the decision and suggest a focused test when useful.
 """
 
 OPENAI_PRICING = {
