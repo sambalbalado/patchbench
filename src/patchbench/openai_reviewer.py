@@ -24,7 +24,7 @@ OPENAI_PRICING = {
         cached_input_usd_per_million=0.025,
         output_usd_per_million=2.00,
         source="https://developers.openai.com/api/docs/models/gpt-5-mini",
-        as_of="2026-09-10",
+        as_of="2026-09-22",
     )
     for model in ("gpt-5-mini", "gpt-5-mini-2025-08-07")
 }

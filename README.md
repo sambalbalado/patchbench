@@ -39,7 +39,8 @@ example model can be replaced without changing code.
 ```bash
 export OPENAI_API_KEY="your-api-key"
 export PATCHBENCH_MODEL="gpt-5-mini"
-patchbench --benchmark benchmark --openai --max-concurrency 4 --max-retries 1
+patchbench --benchmark benchmark --openai --smoke-case division_by_zero \
+  --max-concurrency 4 --max-retries 1
 ```
 
 You can copy `.env.example` as a reminder of the required variable names, but PatchBench does not
@@ -52,6 +53,11 @@ conservative ceiling speeds up experiments without allowing an accidental burst 
 requests. The SDK constrains each response to the existing `ReviewResult` Pydantic schema, and
 PatchBench validates it again before scoring. Requests set `store=False`, and each completed case
 includes `latency_ms`, input tokens, cached input tokens, output tokens, and estimated cost.
+
+Use `--smoke-case CASE_ID` to review one named case before starting the concurrent batch. A
+successful smoke result is reused in the final summary, so that case is not purchased twice. If the
+smoke request fails, PatchBench reports that failure and marks every other case as skipped without
+sending more requests.
 
 The live JSON result records its concurrency, timeout, and retry configuration; the original
 `case_order`; separate completed, failed, and skipped counts; structured per-case failures; skipped
@@ -165,12 +171,20 @@ patches, completed without API failures, and cost an estimated $0.04373. See the
 [machine-readable result](results/gpt-5-mini-review-v1-baseline-2026-09-11.json) for the full
 metrics and case-level scores.
 
+## Audited `review-v2` baseline
+
+The 2026-09-22 validation run completed all 24 audited cases without API or parsing failures. It
+detected all 12 seeded bugs, reduced false positives from four to two, and matched the canonical
+category, file, and line on every positive case. The run cost an estimated $0.045232. See the
+[`review-v2` comparison report](docs/baseline-review-v2-2026-09-22.md) and
+[machine-readable result](results/gpt-5-mini-review-v2-baseline-2026-09-22.json).
+
 ## Roadmap
 
-Milestones 1–2 are complete, and Milestone 3 now has a coverage matrix and an independent label
-audit. One validation run remains before moving into experiment persistence. Next steps are:
+Milestones 1–3 are complete: PatchBench has a real-model baseline, reliable bounded execution, an
+audited coverage matrix, and a validated `review-v2` comparison. Next steps are:
 
-1. Run a new `review-v2` baseline and compare it with the historical `review-v1` result.
+1. Design the experiment-history schema for runs, case results, configuration, usage, and cost.
 2. Persist experiment runs through FastAPI and SQLite/Postgres.
 3. Add a small dashboard for comparing configurations.
 

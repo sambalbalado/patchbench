@@ -181,6 +181,58 @@ def test_live_mode_reports_an_all_failed_run_without_summarizing(tmp_path: Path)
     assert result.failures[0].message == "Synthetic unexpected failure"
 
 
+def test_live_mode_reuses_successful_smoke_case(tmp_path: Path) -> None:
+    write_safe_case(tmp_path, "a_regular", "REGULAR_A")
+    write_safe_case(tmp_path, "b_smoke", "SMOKE")
+    write_safe_case(tmp_path, "c_regular", "REGULAR_C")
+
+    class TrackingReviewer(FakeReviewer):
+        def __init__(self) -> None:
+            self.calls: list[str] = []
+            self.lock = Lock()
+
+        def review_patch(self, patch: str) -> TimedReview:
+            with self.lock:
+                self.calls.append(patch)
+            return super().review_patch(patch)
+
+    reviewer = TrackingReviewer()
+    result = run_openai(tmp_path, reviewer, max_concurrency=2, smoke_case="b_smoke")
+
+    assert "SMOKE" in reviewer.calls[0]
+    assert len(reviewer.calls) == 3
+    assert sum("SMOKE" in patch for patch in reviewer.calls) == 1
+    assert (result.completed_cases, result.failed_cases, result.skipped_cases) == (3, 0, 0)
+    assert result.summary is not None
+    assert [score.case_id for score in result.summary.cases] == [
+        "a_regular",
+        "b_smoke",
+        "c_regular",
+    ]
+
+
+def test_live_mode_stops_after_failed_smoke_case(tmp_path: Path) -> None:
+    write_safe_case(tmp_path, "a_regular", "REGULAR")
+    write_safe_case(tmp_path, "b_smoke", "SMOKE")
+
+    class FailedSmokeReviewer(FakeReviewer):
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def review_patch(self, patch: str) -> TimedReview:
+            self.calls += 1
+            raise ModelAPIError("Synthetic smoke failure", latency_ms=8.0)
+
+    reviewer = FailedSmokeReviewer()
+    result = run_openai(tmp_path, reviewer, smoke_case="b_smoke")
+
+    assert reviewer.calls == 1
+    assert (result.completed_cases, result.failed_cases, result.skipped_cases) == (0, 1, 1)
+    assert result.summary is None
+    assert [failure.case_id for failure in result.failures] == ["b_smoke"]
+    assert result.skipped_case_ids == ["a_regular"]
+
+
 @pytest.mark.parametrize("max_concurrency", [0, 9])
 def test_live_mode_rejects_unsafe_concurrency(max_concurrency: int) -> None:
     with pytest.raises(ValueError, match="between 1 and 8"):
