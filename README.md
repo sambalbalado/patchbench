@@ -159,8 +159,10 @@ ruff check .
   network I/O; result ordering is reconstructed after workers finish.
 - The OpenAI SDK owns retry classification and backoff, while PatchBench limits the retry budget and
   turns exhausted failures into case-level records.
-- The implementation remains in-memory; there is no frontend, database, or persistent worker system
-  yet.
+- Experiment history uses versioned SQLite migrations with normalized run and case-result tables.
+  Aggregate metrics come from a database view so stored summaries cannot drift from case records.
+- Benchmark execution is not connected to persistence or an API yet; those integration boundaries
+  remain explicit next steps.
 
 ## First real baseline
 
@@ -182,10 +184,11 @@ category, file, and line on every positive case. The run cost an estimated $0.04
 ## Roadmap
 
 Milestones 1–3 are complete: PatchBench has a real-model baseline, reliable bounded execution, an
-audited coverage matrix, and a validated `review-v2` comparison. Next steps are:
+audited coverage matrix, and a validated `review-v2` comparison. Milestone 4 now has a tested
+[experiment-history schema](docs/experiment-history-schema.md). Next steps are:
 
-1. Design the experiment-history schema for runs, case results, configuration, usage, and cost.
-2. Persist experiment runs through FastAPI and SQLite/Postgres.
+1. Map benchmark runs into SQLite through a small repository/service layer.
+2. Add FastAPI endpoints for starting runs and retrieving status and saved results.
 3. Add a small dashboard for comparing configurations.
 
 ## License
