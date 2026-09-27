@@ -161,8 +161,10 @@ ruff check .
   turns exhausted failures into case-level records.
 - Experiment history uses versioned SQLite migrations with normalized run and case-result tables.
   Aggregate metrics come from a database view so stored summaries cannot drift from case records.
-- Benchmark execution is not connected to persistence or an API yet; those integration boundaries
-  remain explicit next steps.
+- A focused history repository atomically stores complete runs and reconstructs typed results by run
+  ID. Persistence stays opt-in, so existing offline and live CLI execution remains database-free.
+- Benchmark execution is not connected to an API yet; that integration boundary remains an explicit
+  next step.
 
 ## First real baseline
 
@@ -185,11 +187,11 @@ category, file, and line on every positive case. The run cost an estimated $0.04
 
 Milestones 1–3 are complete: PatchBench has a real-model baseline, reliable bounded execution, an
 audited coverage matrix, and a validated `review-v2` comparison. Milestone 4 now has a tested
-[experiment-history schema](docs/experiment-history-schema.md). Next steps are:
+[experiment-history schema and repository](docs/experiment-history-schema.md). Next steps are:
 
-1. Map benchmark runs into SQLite through a small repository/service layer.
-2. Add FastAPI endpoints for starting runs and retrieving status and saved results.
-3. Add a small dashboard for comparing configurations.
+1. Add FastAPI endpoints for starting runs and retrieving status and saved results.
+2. Add a small dashboard for comparing configurations.
+3. Prepare deployment, continuous testing, and portfolio documentation.
 
 ## License
 

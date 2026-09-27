@@ -54,8 +54,22 @@ Migration files use contiguous, zero-padded names such as `001_initial_history.s
 The SQL files ship as package data, so installed builds and source checkouts use the same schema.
 Future changes should add `002_*.sql`, never edit an already released migration.
 
+## Repository contract
+
+`HistoryRepository` is the only application layer that translates between SQLite rows and the
+existing benchmark models. Saving a terminal run inserts its metadata and every completed, failed,
+or skipped case in one transaction. If any case violates a database constraint, SQLite rolls back
+the run row and all preceding case rows.
+
+`get_run` reconstructs the ordered `BenchmarkRun` and its typed `RunMetadata`. It uses
+`run_summaries` for aggregate values instead of trusting a copied summary. `get_summary` exposes the
+same derived metrics directly for future API consumers. Missing run IDs return `None`.
+
+Persistence remains opt-in: neither offline scoring nor live model execution opens a database. The
+caller owns the SQLite connection and decides when a completed run should be stored.
+
 ## Next integration boundary
 
-The next roadmap task can build a small repository/service layer that maps `BenchmarkRun`,
-`CaseScore`, and `CaseFailure` into these tables. FastAPI handlers should call that layer instead of
-embedding SQL, and should read aggregate metrics from `run_summaries`.
+FastAPI handlers can now call `HistoryRepository` rather than embedding SQL. The API layer still
+needs to create run identifiers and timezone-aware timestamps, execute work outside request
+handlers, and expose run status and stored results.
