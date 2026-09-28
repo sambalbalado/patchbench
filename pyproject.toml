@@ -8,13 +8,19 @@ version = "0.1.0"
 description = "A reproducible evaluation harness for AI code reviewers"
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = ["openai>=2,<3", "pydantic>=2.9,<3"]
+dependencies = [
+    "fastapi>=0.141,<1",
+    "openai>=2,<3",
+    "pydantic>=2.9,<3",
+    "uvicorn>=0.54,<1",
+]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.3,<9", "ruff>=0.9,<1"]
+dev = ["httpx2>=2.13,<3", "pytest>=8.3,<9", "ruff>=0.9,<1"]
 
 [project.scripts]
 patchbench = "patchbench.runner:main"
+patchbench-api = "patchbench.api:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

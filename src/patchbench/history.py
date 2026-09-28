@@ -63,6 +63,17 @@ class RunMetadata(BaseModel):
         return self
 
 
+class RunRecord(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    metadata: RunMetadata
+    max_concurrency: int = Field(ge=1)
+    timeout_seconds: float = Field(gt=0)
+    max_retries: int = Field(ge=0)
+    error_type: str | None = None
+    error_message: str | None = None
+
+
 class StoredRun(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -160,6 +171,109 @@ class HistoryRepository:
         initialize_history(connection)
         self._connection = connection
 
+    def create_run(
+        self,
+        metadata: RunMetadata,
+        *,
+        max_concurrency: int,
+        timeout_seconds: float,
+        max_retries: int,
+    ) -> None:
+        """Create a queued run before background execution begins."""
+
+        if metadata.status is not RunStatus.QUEUED:
+            raise ValueError("New background runs must start in queued status")
+        if max_concurrency < 1:
+            raise ValueError("max_concurrency must be positive")
+        if timeout_seconds <= 0:
+            raise ValueError("timeout_seconds must be positive")
+        if max_retries < 0:
+            raise ValueError("max_retries cannot be negative")
+        if self._connection.in_transaction:
+            raise ValueError("Creating a run requires a connection outside a transaction")
+
+        with self._connection:
+            self._insert_run(
+                metadata,
+                max_concurrency=max_concurrency,
+                timeout_seconds=timeout_seconds,
+                max_retries=max_retries,
+            )
+
+    def mark_running(self, run_id: str, started_at: datetime) -> None:
+        if started_at.utcoffset() is None:
+            raise ValueError("History timestamps must include a timezone")
+        with self._connection:
+            cursor = self._connection.execute(
+                """
+                UPDATE runs
+                SET status = 'running', started_at = ?
+                WHERE run_id = ? AND status = 'queued'
+                """,
+                (started_at.isoformat(), run_id),
+            )
+            if cursor.rowcount != 1:
+                raise ValueError(f"Run is missing or no longer queued: {run_id}")
+
+    def finish_run(
+        self,
+        run_id: str,
+        benchmark_run: BenchmarkRun,
+        expected_bug_present: Mapping[str, bool],
+        completed_at: datetime,
+    ) -> None:
+        """Atomically attach case outcomes and move a queued/running run to a terminal state."""
+
+        if completed_at.utcoffset() is None:
+            raise ValueError("History timestamps must include a timezone")
+        record = self.get_record(run_id)
+        if record is None or record.metadata.status not in (RunStatus.QUEUED, RunStatus.RUNNING):
+            raise ValueError(f"Run is missing or already terminal: {run_id}")
+        expected_ids = set(benchmark_run.case_order)
+        if set(expected_bug_present) != expected_ids:
+            raise ValueError("Expected-case metadata must match benchmark case_order exactly")
+        if any(not isinstance(value, bool) for value in expected_bug_present.values()):
+            raise TypeError("Expected bug values must be booleans")
+        self._validate_summary_metadata(record.metadata, benchmark_run.summary)
+        status = RunStatus.COMPLETED if benchmark_run.summary is not None else RunStatus.FAILED
+
+        with self._connection:
+            cursor = self._connection.execute(
+                """
+                UPDATE runs
+                SET status = ?, completed_at = ?, error_type = NULL, error_message = NULL
+                WHERE run_id = ? AND status IN ('queued', 'running')
+                """,
+                (status.value, completed_at.isoformat(), run_id),
+            )
+            if cursor.rowcount != 1:
+                raise ValueError(f"Run is missing or already terminal: {run_id}")
+            self._insert_case_results(run_id, benchmark_run, expected_bug_present)
+
+    def fail_run(
+        self,
+        run_id: str,
+        *,
+        completed_at: datetime,
+        error_type: str,
+        error_message: str,
+    ) -> None:
+        """Record an orchestration failure that occurred before case results were available."""
+
+        if completed_at.utcoffset() is None:
+            raise ValueError("History timestamps must include a timezone")
+        with self._connection:
+            cursor = self._connection.execute(
+                """
+                UPDATE runs
+                SET status = 'failed', completed_at = ?, error_type = ?, error_message = ?
+                WHERE run_id = ? AND status IN ('queued', 'running')
+                """,
+                (completed_at.isoformat(), error_type, error_message, run_id),
+            )
+            if cursor.rowcount != 1:
+                raise ValueError(f"Run is missing or already terminal: {run_id}")
+
     def save_run(
         self,
         metadata: RunMetadata,
@@ -180,86 +294,28 @@ class HistoryRepository:
         configuration_json = json.dumps(
             metadata.configuration, allow_nan=False, sort_keys=True, separators=(",", ":")
         )
-        pricing = metadata.pricing
-        scores = (
-            {score.case_id: score for score in benchmark_run.summary.cases}
-            if benchmark_run.summary is not None
-            else {}
-        )
-        failures = {failure.case_id: failure for failure in benchmark_run.failures}
-        skipped = set(benchmark_run.skipped_case_ids)
-
         with self._connection:
-            self._connection.execute(
-                """
-                INSERT INTO runs (
-                    run_id, status, mode, benchmark_name, benchmark_version, source_commit,
-                    model, prompt_version, max_concurrency, timeout_seconds, max_retries,
-                    input_usd_per_million, cached_input_usd_per_million,
-                    output_usd_per_million, pricing_source, pricing_as_of,
-                    configuration_json, created_at, started_at, completed_at
-                ) VALUES (
-                    :run_id, :status, :mode, :benchmark_name, :benchmark_version, :source_commit,
-                    :model, :prompt_version, :max_concurrency, :timeout_seconds, :max_retries,
-                    :input_price, :cached_input_price, :output_price, :pricing_source,
-                    :pricing_as_of, :configuration_json, :created_at, :started_at, :completed_at
-                )
-                """,
-                {
-                    "run_id": metadata.run_id,
-                    "status": metadata.status.value,
-                    "mode": metadata.mode.value,
-                    "benchmark_name": metadata.benchmark_name,
-                    "benchmark_version": metadata.benchmark_version,
-                    "source_commit": metadata.source_commit,
-                    "model": metadata.model,
-                    "prompt_version": metadata.prompt_version,
-                    "max_concurrency": benchmark_run.max_concurrency,
-                    "timeout_seconds": benchmark_run.timeout_seconds,
-                    "max_retries": benchmark_run.max_retries,
-                    "input_price": pricing.input_usd_per_million if pricing else None,
-                    "cached_input_price": (
-                        pricing.cached_input_usd_per_million if pricing else None
-                    ),
-                    "output_price": pricing.output_usd_per_million if pricing else None,
-                    "pricing_source": pricing.source if pricing else None,
-                    "pricing_as_of": pricing.as_of if pricing else None,
-                    "configuration_json": configuration_json,
-                    "created_at": metadata.created_at.isoformat(),
-                    "started_at": metadata.started_at.isoformat() if metadata.started_at else None,
-                    "completed_at": (
-                        metadata.completed_at.isoformat() if metadata.completed_at else None
-                    ),
-                },
+            self._insert_run(
+                metadata,
+                max_concurrency=benchmark_run.max_concurrency,
+                timeout_seconds=benchmark_run.timeout_seconds,
+                max_retries=benchmark_run.max_retries,
+                configuration_json=configuration_json,
             )
-            for position, case_id in enumerate(benchmark_run.case_order):
-                case_values = self._case_values(
-                    metadata.run_id,
-                    case_id,
-                    position,
-                    expected_bug_present[case_id],
-                    scores.get(case_id),
-                    failures.get(case_id),
-                    case_id in skipped,
-                )
-                self._connection.execute(
-                    """
-                    INSERT INTO case_results (
-                        run_id, case_id, position, outcome, expected_bug_present,
-                        detection_correct, category_correct, file_correct, line_correct,
-                        false_positive, points_earned, points_possible, latency_ms,
-                        input_tokens, cached_input_tokens, output_tokens, estimated_cost_usd,
-                        error_type, error_message
-                    ) VALUES (
-                        :run_id, :case_id, :position, :outcome, :expected_bug_present,
-                        :detection_correct, :category_correct, :file_correct, :line_correct,
-                        :false_positive, :points_earned, :points_possible, :latency_ms,
-                        :input_tokens, :cached_input_tokens, :output_tokens, :estimated_cost_usd,
-                        :error_type, :error_message
-                    )
-                    """,
-                    case_values,
-                )
+            self._insert_case_results(metadata.run_id, benchmark_run, expected_bug_present)
+
+    def get_record(self, run_id: str) -> RunRecord | None:
+        run_row = self._fetch_one("SELECT * FROM runs WHERE run_id = ?", (run_id,))
+        if run_row is None:
+            return None
+        return RunRecord(
+            metadata=self._metadata_from_row(run_row),
+            max_concurrency=run_row["max_concurrency"],
+            timeout_seconds=run_row["timeout_seconds"],
+            max_retries=run_row["max_retries"],
+            error_type=run_row["error_type"],
+            error_message=run_row["error_message"],
+        )
 
     def get_run(self, run_id: str) -> StoredRun | None:
         run_row = self._fetch_one("SELECT * FROM runs WHERE run_id = ?", (run_id,))
@@ -269,26 +325,14 @@ class HistoryRepository:
         case_rows = self._fetch_all(
             "SELECT * FROM case_results WHERE run_id = ? ORDER BY position", (run_id,)
         )
+        if not case_rows:
+            return None
         summary_row = self._fetch_one("SELECT * FROM run_summaries WHERE run_id = ?", (run_id,))
         if summary_row is None:
             raise RuntimeError(f"Missing derived summary for stored run: {run_id}")
 
         pricing = self._pricing_from_row(run_row)
-        metadata = RunMetadata(
-            run_id=run_row["run_id"],
-            status=run_row["status"],
-            mode=run_row["mode"],
-            benchmark_name=run_row["benchmark_name"],
-            benchmark_version=run_row["benchmark_version"],
-            source_commit=run_row["source_commit"],
-            model=run_row["model"],
-            prompt_version=run_row["prompt_version"],
-            pricing=pricing,
-            configuration=json.loads(run_row["configuration_json"]),
-            created_at=run_row["created_at"],
-            started_at=run_row["started_at"],
-            completed_at=run_row["completed_at"],
-        )
+        metadata = self._metadata_from_row(run_row)
 
         scores: list[CaseScore] = []
         failures: list[CaseFailure] = []
@@ -346,6 +390,117 @@ class HistoryRepository:
     def get_summary(self, run_id: str) -> BenchmarkSummary | None:
         stored_run = self.get_run(run_id)
         return stored_run.benchmark_run.summary if stored_run else None
+
+    def _insert_run(
+        self,
+        metadata: RunMetadata,
+        *,
+        max_concurrency: int,
+        timeout_seconds: float | None,
+        max_retries: int | None,
+        configuration_json: str | None = None,
+    ) -> None:
+        pricing = metadata.pricing
+        self._connection.execute(
+            """
+            INSERT INTO runs (
+                run_id, status, mode, benchmark_name, benchmark_version, source_commit,
+                model, prompt_version, max_concurrency, timeout_seconds, max_retries,
+                input_usd_per_million, cached_input_usd_per_million,
+                output_usd_per_million, pricing_source, pricing_as_of,
+                configuration_json, created_at, started_at, completed_at
+            ) VALUES (
+                :run_id, :status, :mode, :benchmark_name, :benchmark_version, :source_commit,
+                :model, :prompt_version, :max_concurrency, :timeout_seconds, :max_retries,
+                :input_price, :cached_input_price, :output_price, :pricing_source,
+                :pricing_as_of, :configuration_json, :created_at, :started_at, :completed_at
+            )
+            """,
+            {
+                "run_id": metadata.run_id,
+                "status": metadata.status.value,
+                "mode": metadata.mode.value,
+                "benchmark_name": metadata.benchmark_name,
+                "benchmark_version": metadata.benchmark_version,
+                "source_commit": metadata.source_commit,
+                "model": metadata.model,
+                "prompt_version": metadata.prompt_version,
+                "max_concurrency": max_concurrency,
+                "timeout_seconds": timeout_seconds,
+                "max_retries": max_retries,
+                "input_price": pricing.input_usd_per_million if pricing else None,
+                "cached_input_price": pricing.cached_input_usd_per_million if pricing else None,
+                "output_price": pricing.output_usd_per_million if pricing else None,
+                "pricing_source": pricing.source if pricing else None,
+                "pricing_as_of": pricing.as_of if pricing else None,
+                "configuration_json": configuration_json
+                or json.dumps(
+                    metadata.configuration, allow_nan=False, sort_keys=True, separators=(",", ":")
+                ),
+                "created_at": metadata.created_at.isoformat(),
+                "started_at": metadata.started_at.isoformat() if metadata.started_at else None,
+                "completed_at": metadata.completed_at.isoformat() if metadata.completed_at else None,
+            },
+        )
+
+    def _insert_case_results(
+        self,
+        run_id: str,
+        benchmark_run: BenchmarkRun,
+        expected_bug_present: Mapping[str, bool],
+    ) -> None:
+        scores = (
+            {score.case_id: score for score in benchmark_run.summary.cases}
+            if benchmark_run.summary is not None
+            else {}
+        )
+        failures = {failure.case_id: failure for failure in benchmark_run.failures}
+        skipped = set(benchmark_run.skipped_case_ids)
+        for position, case_id in enumerate(benchmark_run.case_order):
+            case_values = self._case_values(
+                run_id,
+                case_id,
+                position,
+                expected_bug_present[case_id],
+                scores.get(case_id),
+                failures.get(case_id),
+                case_id in skipped,
+            )
+            self._connection.execute(
+                """
+                INSERT INTO case_results (
+                    run_id, case_id, position, outcome, expected_bug_present,
+                    detection_correct, category_correct, file_correct, line_correct,
+                    false_positive, points_earned, points_possible, latency_ms,
+                    input_tokens, cached_input_tokens, output_tokens, estimated_cost_usd,
+                    error_type, error_message
+                ) VALUES (
+                    :run_id, :case_id, :position, :outcome, :expected_bug_present,
+                    :detection_correct, :category_correct, :file_correct, :line_correct,
+                    :false_positive, :points_earned, :points_possible, :latency_ms,
+                    :input_tokens, :cached_input_tokens, :output_tokens, :estimated_cost_usd,
+                    :error_type, :error_message
+                )
+                """,
+                case_values,
+            )
+
+    def _metadata_from_row(self, row: dict[str, Any]) -> RunMetadata:
+        return RunMetadata(
+            run_id=row["run_id"],
+            status=row["status"],
+            mode=row["mode"],
+            benchmark_name=row["benchmark_name"],
+            benchmark_version=row["benchmark_version"],
+            source_commit=row["source_commit"],
+            model=row["model"],
+            prompt_version=row["prompt_version"],
+            pricing=self._pricing_from_row(row),
+            configuration=json.loads(row["configuration_json"]),
+            created_at=row["created_at"],
+            started_at=row["started_at"],
+            completed_at=row["completed_at"],
+        )
 
     @staticmethod
     def _validate_summary_metadata(metadata: RunMetadata, summary: BenchmarkSummary | None) -> None:

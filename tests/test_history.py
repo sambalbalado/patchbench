@@ -31,13 +31,16 @@ def insert_run(connection: sqlite3.Connection, run_id: str = "run-1") -> None:
 def test_initialization_applies_migrations_once() -> None:
     connection = sqlite3.connect(":memory:")
 
-    assert initialize_history(connection) == 1
-    assert initialize_history(connection) == 1
+    assert initialize_history(connection) == 2
+    assert initialize_history(connection) == 2
 
     migrations = connection.execute(
         "SELECT version, name FROM schema_migrations ORDER BY version"
     ).fetchall()
-    assert migrations == [(1, "001_initial_history.sql")]
+    assert migrations == [
+        (1, "001_initial_history.sql"),
+        (2, "002_run_errors.sql"),
+    ]
     assert connection.execute("PRAGMA foreign_keys").fetchone() == (1,)
 
 
@@ -49,7 +52,7 @@ def test_connect_history_creates_a_reusable_database(tmp_path) -> None:
 
     with connect_history(database_path) as connection:
         assert connection.execute("SELECT run_id FROM runs").fetchone() == ("run-1",)
-        assert connection.execute("SELECT COUNT(*) FROM schema_migrations").fetchone() == (1,)
+        assert connection.execute("SELECT COUNT(*) FROM schema_migrations").fetchone() == (2,)
 
 
 def test_summary_metrics_are_derived_from_case_results() -> None:

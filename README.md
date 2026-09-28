@@ -87,6 +87,36 @@ after the configured retry policy becomes a structured failure containing its ca
 message, and elapsed request time when available. Live mode makes at least one paid model request per
 discovered benchmark case, so review the benchmark directory and retry setting before running it.
 
+## Run API
+
+PatchBench also exposes live execution and saved history through FastAPI. Load the local environment
+before starting the server; `.env` remains ignored by Git and is never read into API responses.
+
+```bash
+set -a
+source .env
+set +a
+export PATCHBENCH_SOURCE_COMMIT="$(git rev-parse HEAD)"
+patchbench-api
+```
+
+The interactive API documentation is available at `http://127.0.0.1:8000/docs`. A run starts with a
+small request that names the model and bounded execution settings:
+
+```bash
+curl -X POST http://127.0.0.1:8000/runs \
+  -H 'content-type: application/json' \
+  -d '{"model":"gpt-5-mini","max_concurrency":4,"max_retries":1,"smoke_case":"division_by_zero"}'
+```
+
+The response is `202 Accepted` with a generated run ID. Poll `GET /runs/{run_id}` for `queued`,
+`running`, `completed`, or `failed`, then read the persisted case outcomes and derived summary from
+`GET /runs/{run_id}/results`. Request handlers never wait for the benchmark: a separate executor runs
+the paid model calls while status requests use independent SQLite connections. By default, history is
+stored in `results/patchbench.db`; `PATCHBENCH_DATABASE` and `PATCHBENCH_BENCHMARK` can override the
+database and benchmark paths. The API key stays in the server process environment and is not part of
+the JSON contract.
+
 ## Benchmark format
 
 Each case contains a code patch and its expected finding:
@@ -163,8 +193,8 @@ ruff check .
   Aggregate metrics come from a database view so stored summaries cannot drift from case records.
 - A focused history repository atomically stores complete runs and reconstructs typed results by run
   ID. Persistence stays opt-in, so existing offline and live CLI execution remains database-free.
-- Benchmark execution is not connected to an API yet; that integration boundary remains an explicit
-  next step.
+- FastAPI handlers validate run settings and delegate lifecycle changes to the history repository;
+  they contain no SQL. Background execution keeps status and result reads responsive during a run.
 
 ## First real baseline
 
@@ -185,11 +215,11 @@ category, file, and line on every positive case. The run cost an estimated $0.04
 
 ## Roadmap
 
-Milestones 1–3 are complete: PatchBench has a real-model baseline, reliable bounded execution, an
-audited coverage matrix, and a validated `review-v2` comparison. Milestone 4 now has a tested
-[experiment-history schema and repository](docs/experiment-history-schema.md). Next steps are:
+Milestones 1–4 are complete: PatchBench has a real-model baseline, reliable bounded execution, an
+audited coverage matrix, a validated `review-v2` comparison, and a tested experiment-history API.
+Next steps are:
 
-1. Add FastAPI endpoints for starting runs and retrieving status and saved results.
+1. Define the run-comparison experience and the metrics it needs.
 2. Add a small dashboard for comparing configurations.
 3. Prepare deployment, continuous testing, and portfolio documentation.
 
