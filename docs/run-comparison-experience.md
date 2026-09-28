@@ -199,7 +199,7 @@ The browser then:
 ## Implementation sequence
 
 1. ~~Add the bounded run-list repository method and `GET /runs` endpoint.~~ Complete.
-2. Build the baseline/candidate selectors and headline metric comparison.
+2. ~~Build the baseline/candidate selectors and headline metric comparison.~~ Complete.
 3. Add the filterable per-case change table and complete the defined interface states.
 
 Each step is independently testable and should remain a separate development-day commit.
@@ -212,3 +212,6 @@ Each step is independently testable and should remain a separate development-day
 - [x] Loading, empty, partial, error, and incompatibility states are specified.
 - [x] The written wireframe fixes information hierarchy without prescribing a heavy visual system.
 - [x] The bounded run-list backend dependency is implemented and tested.
+- [x] The summary dashboard serves compatible run selectors, raw metric values, explicit deltas,
+  direction labels, completion coverage, and resilient loading and error states.
+- [ ] The case-level drill-down implements the specified alignment, outcome, and filtering rules.

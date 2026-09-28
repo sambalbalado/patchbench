@@ -100,8 +100,11 @@ export PATCHBENCH_SOURCE_COMMIT="$(git rev-parse HEAD)"
 patchbench-api
 ```
 
-The interactive API documentation is available at `http://127.0.0.1:8000/docs`. A run starts with a
-small request that names the model and bounded execution settings:
+The comparison dashboard is available at `http://127.0.0.1:8000/`, and the interactive API
+documentation remains available at `http://127.0.0.1:8000/docs`. The dashboard automatically
+selects the two most recent compatible completed runs and shows raw values, explicit deltas,
+direction labels, and completion coverage. A run starts with a small request that names the model
+and bounded execution settings:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/runs \
@@ -196,6 +199,8 @@ ruff check .
   ID. Persistence stays opt-in, so existing offline and live CLI execution remains database-free.
 - FastAPI handlers validate run settings and delegate lifecycle changes to the history repository;
   they contain no SQL. Background execution keeps status and result reads responsive during a run.
+- The comparison dashboard is served from the same FastAPI process, uses the existing run-list and
+  result endpoints, and computes presentation-only deltas in a dependency-free browser client.
 
 ## First real baseline
 
@@ -218,12 +223,11 @@ category, file, and line on every positive case. The run cost an estimated $0.04
 
 Milestones 1–4 are complete: PatchBench has a real-model baseline, reliable bounded execution, an
 audited coverage matrix, a validated `review-v2` comparison, and a tested experiment-history API.
-Next steps are:
+Milestone 5 now includes the summary comparison dashboard. The next step is:
 
-1. Build the summary dashboard from the selected
+1. Add the per-case comparison drill-down from the selected
    [run-comparison experience](docs/run-comparison-experience.md).
-2. Add the per-case comparison drill-down.
-3. Prepare deployment, continuous testing, and portfolio documentation.
+2. Prepare deployment, continuous testing, and portfolio documentation.
 
 ## License
 

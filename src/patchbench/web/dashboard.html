@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Compare two PatchBench code-review benchmark runs.">
+    <title>Run comparison · PatchBench</title>
+    <link rel="stylesheet" href="/assets/dashboard.css">
+    <script src="/assets/dashboard.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#comparison-main">Skip to comparison</a>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="PatchBench home">
+        <span class="brand-mark" aria-hidden="true">PB</span>
+        <span>
+          <strong>PatchBench</strong>
+          <small>Evaluation workspace</small>
+        </span>
+      </a>
+      <nav aria-label="Utility navigation">
+        <a class="quiet-link" href="/docs">API documentation</a>
+      </nav>
+    </header>
+
+    <main id="comparison-main">
+      <section class="hero" aria-labelledby="page-title">
+        <p class="eyebrow">Experiment comparison</p>
+        <h1 id="page-title">Did the candidate actually improve?</h1>
+        <p class="hero-copy">
+          Compare evaluation quality, reliability, latency, and estimated cost without hiding
+          incomplete cases behind a single score.
+        </p>
+      </section>
+
+      <section class="selector-panel" aria-labelledby="selection-title">
+        <div class="section-heading">
+          <div>
+            <p class="step-label">Step 1</p>
+            <h2 id="selection-title">Choose two compatible runs</h2>
+          </div>
+          <span class="compatibility-note">Same benchmark name and version</span>
+        </div>
+
+        <div class="selector-grid">
+          <label class="run-selector" for="baseline-select">
+            <span class="selector-role">Baseline</span>
+            <span class="selector-help">The result you are comparing against</span>
+            <select id="baseline-select" disabled>
+              <option value="">Loading runs…</option>
+            </select>
+          </label>
+
+          <div class="comparison-arrow" aria-hidden="true">→</div>
+
+          <label class="run-selector" for="candidate-select">
+            <span class="selector-role">Candidate</span>
+            <span class="selector-help">The result you want to evaluate</span>
+            <select id="candidate-select" disabled>
+              <option value="">Loading runs…</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      <section
+        id="status-panel"
+        class="status-panel"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        <span class="status-symbol" aria-hidden="true"></span>
+        <div>
+          <h2 id="status-title">Loading completed runs</h2>
+          <p id="status-message">Reading experiment history from PatchBench.</p>
+          <button id="retry-button" class="secondary-button" type="button" hidden>Try again</button>
+        </div>
+      </section>
+
+      <section id="comparison-view" hidden aria-busy="false">
+        <div id="comparison-warning" class="warning-panel" role="note" hidden></div>
+
+        <section class="run-context" aria-label="Selected run details">
+          <article class="run-card baseline-card">
+            <p class="run-card-label">Baseline</p>
+            <h2 id="baseline-name">—</h2>
+            <dl id="baseline-details"></dl>
+          </article>
+          <article class="run-card candidate-card">
+            <p class="run-card-label">Candidate</p>
+            <h2 id="candidate-name">—</h2>
+            <dl id="candidate-details"></dl>
+          </article>
+        </section>
+
+        <section class="metrics-section" aria-labelledby="metrics-title">
+          <div class="section-heading metrics-heading">
+            <div>
+              <p class="step-label">Step 2</p>
+              <h2 id="metrics-title">Read the evidence</h2>
+            </div>
+            <p>Delta = candidate − baseline</p>
+          </div>
+
+          <div class="metric-table-wrap">
+            <table class="metric-table">
+              <thead>
+                <tr>
+                  <th scope="col">Metric</th>
+                  <th scope="col">Baseline</th>
+                  <th scope="col">Candidate</th>
+                  <th scope="col">Delta</th>
+                  <th scope="col">Direction</th>
+                </tr>
+              </thead>
+              <tbody id="metric-rows"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="next-section" aria-labelledby="cases-title">
+          <div>
+            <p class="step-label">Next development increment</p>
+            <h2 id="cases-title">Case-level changes</h2>
+            <p>
+              The next PatchBench slice will explain which patches improved, regressed, or became
+              unavailable. Today’s summary deliberately stays focused on trustworthy aggregates.
+            </p>
+          </div>
+          <span class="coming-soon">Planned</span>
+        </section>
+      </section>
+    </main>
+
+    <footer>
+      <p>PatchBench separates incorrect reviews from execution failures.</p>
+      <a href="/openapi.json">OpenAPI contract</a>
+    </footer>
+  </body>
+</html>

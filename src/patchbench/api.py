@@ -3,12 +3,14 @@ from collections.abc import Callable, Iterator, Mapping
 from concurrent.futures import Executor, ThreadPoolExecutor
 from contextlib import asynccontextmanager, contextmanager
 from datetime import UTC, datetime
+from importlib.resources import files
 from pathlib import Path
 from typing import Annotated
 from uuid import uuid4
 
 import uvicorn
-from fastapi import FastAPI, HTTPException, Query, status
+from fastapi import FastAPI, HTTPException, Query, Response, status
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from patchbench.history import (
@@ -32,6 +34,13 @@ from patchbench.runner import DEFAULT_MAX_CONCURRENCY, MAX_CONCURRENCY, run_open
 from patchbench.schemas import BenchmarkCase, BenchmarkRun
 
 DEFAULT_TIMEOUT_SECONDS = 60.0
+DASHBOARD_HEADERS = {
+    "Content-Security-Policy": (
+        "default-src 'self'; connect-src 'self'; img-src 'self' data:; "
+        "script-src 'self'; style-src 'self'; base-uri 'none'; frame-ancestors 'none'"
+    ),
+    "X-Content-Type-Options": "nosniff",
+}
 
 
 class StartRunRequest(BaseModel):
@@ -220,6 +229,25 @@ def create_app(service: BenchmarkService | None = None) -> FastAPI:
         benchmark_service.shutdown()
 
     application = FastAPI(title="PatchBench API", version="0.1.0", lifespan=lifespan)
+
+    @application.get("/", response_class=HTMLResponse, include_in_schema=False)
+    def dashboard() -> HTMLResponse:
+        content = files("patchbench").joinpath("web", "dashboard.html").read_text()
+        return HTMLResponse(content=content, headers=DASHBOARD_HEADERS)
+
+    @application.get("/assets/dashboard.css", include_in_schema=False)
+    def dashboard_styles() -> Response:
+        content = files("patchbench").joinpath("web", "dashboard.css").read_text()
+        return Response(content=content, media_type="text/css", headers=DASHBOARD_HEADERS)
+
+    @application.get("/assets/dashboard.js", include_in_schema=False)
+    def dashboard_script() -> Response:
+        content = files("patchbench").joinpath("web", "dashboard.js").read_text()
+        return Response(
+            content=content,
+            media_type="text/javascript",
+            headers=DASHBOARD_HEADERS,
+        )
 
     @application.post(
         "/runs",
