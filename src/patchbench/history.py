@@ -19,6 +19,8 @@ from patchbench.schemas import (
 )
 
 MIGRATION_PATTERN = re.compile(r"^(?P<version>[0-9]{3})_[a-z0-9_]+\.sql$")
+DEFAULT_RUN_LIST_LIMIT = 50
+MAX_RUN_LIST_LIMIT = 100
 
 
 class RunMode(StrEnum):
@@ -308,14 +310,38 @@ class HistoryRepository:
         run_row = self._fetch_one("SELECT * FROM runs WHERE run_id = ?", (run_id,))
         if run_row is None:
             return None
-        return RunRecord(
-            metadata=self._metadata_from_row(run_row),
-            max_concurrency=run_row["max_concurrency"],
-            timeout_seconds=run_row["timeout_seconds"],
-            max_retries=run_row["max_retries"],
-            error_type=run_row["error_type"],
-            error_message=run_row["error_message"],
-        )
+        return self._record_from_row(run_row)
+
+    def list_records(
+        self,
+        *,
+        status: RunStatus | None = None,
+        limit: int = DEFAULT_RUN_LIST_LIMIT,
+    ) -> list[RunRecord]:
+        """List newest-created runs, optionally filtered to one exact lifecycle status."""
+
+        if not 1 <= limit <= MAX_RUN_LIST_LIMIT:
+            raise ValueError(f"limit must be between 1 and {MAX_RUN_LIST_LIMIT}")
+        if status is None:
+            rows = self._fetch_all(
+                """
+                SELECT * FROM runs
+                ORDER BY created_at DESC, run_id DESC
+                LIMIT ?
+                """,
+                (limit,),
+            )
+        else:
+            rows = self._fetch_all(
+                """
+                SELECT * FROM runs
+                WHERE status = ?
+                ORDER BY created_at DESC, run_id DESC
+                LIMIT ?
+                """,
+                (status.value, limit),
+            )
+        return [self._record_from_row(row) for row in rows]
 
     def get_run(self, run_id: str) -> StoredRun | None:
         run_row = self._fetch_one("SELECT * FROM runs WHERE run_id = ?", (run_id,))
@@ -500,6 +526,16 @@ class HistoryRepository:
             created_at=row["created_at"],
             started_at=row["started_at"],
             completed_at=row["completed_at"],
+        )
+
+    def _record_from_row(self, row: dict[str, Any]) -> RunRecord:
+        return RunRecord(
+            metadata=self._metadata_from_row(row),
+            max_concurrency=row["max_concurrency"],
+            timeout_seconds=row["timeout_seconds"],
+            max_retries=row["max_retries"],
+            error_type=row["error_type"],
+            error_message=row["error_message"],
         )
 
     @staticmethod

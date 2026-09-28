@@ -111,11 +111,12 @@ curl -X POST http://127.0.0.1:8000/runs \
 
 The response is `202 Accepted` with a generated run ID. Poll `GET /runs/{run_id}` for `queued`,
 `running`, `completed`, or `failed`, then read the persisted case outcomes and derived summary from
-`GET /runs/{run_id}/results`. Request handlers never wait for the benchmark: a separate executor runs
-the paid model calls while status requests use independent SQLite connections. By default, history is
-stored in `results/patchbench.db`; `PATCHBENCH_DATABASE` and `PATCHBENCH_BENCHMARK` can override the
-database and benchmark paths. The API key stays in the server process environment and is not part of
-the JSON contract.
+`GET /runs/{run_id}/results`. `GET /runs?status=completed&limit=50` lists selectable runs newest
+first; status is optional and the limit must be between 1 and 100. Request handlers never wait for
+the benchmark: a separate executor runs the paid model calls while status requests use independent
+SQLite connections. By default, history is stored in `results/patchbench.db`;
+`PATCHBENCH_DATABASE` and `PATCHBENCH_BENCHMARK` can override the database and benchmark paths. The
+API key stays in the server process environment and is not part of the JSON contract.
 
 ## Benchmark format
 
@@ -219,9 +220,9 @@ Milestones 1–4 are complete: PatchBench has a real-model baseline, reliable bo
 audited coverage matrix, a validated `review-v2` comparison, and a tested experiment-history API.
 Next steps are:
 
-1. Add the bounded run-list endpoint required by the selected
+1. Build the summary dashboard from the selected
    [run-comparison experience](docs/run-comparison-experience.md).
-2. Build the summary comparison and per-case change views as separate daily increments.
+2. Add the per-case comparison drill-down.
 3. Prepare deployment, continuous testing, and portfolio documentation.
 
 ## License

@@ -6,6 +6,7 @@ import pytest
 
 from patchbench.evaluator import summarize
 from patchbench.history import (
+    MAX_RUN_LIST_LIMIT,
     HistoryRepository,
     RunMetadata,
     RunMode,
@@ -234,4 +235,61 @@ def test_missing_run_returns_none() -> None:
 
     assert repository.get_run("missing") is None
     assert repository.get_summary("missing") is None
+    connection.close()
+
+
+def test_list_records_orders_newest_first_and_filters_exact_status() -> None:
+    connection, repository = make_repository()
+    older = make_metadata("older").model_copy(
+        update={
+            "created_at": datetime(2026, 9, 27, 8, 0, tzinfo=UTC),
+            "started_at": datetime(2026, 9, 27, 8, 1, tzinfo=UTC),
+            "completed_at": datetime(2026, 9, 27, 8, 5, tzinfo=UTC),
+        }
+    )
+    newer = make_metadata("newer").model_copy(
+        update={
+            "created_at": datetime(2026, 9, 27, 9, 0, tzinfo=UTC),
+            "started_at": datetime(2026, 9, 27, 9, 1, tzinfo=UTC),
+            "completed_at": datetime(2026, 9, 27, 9, 5, tzinfo=UTC),
+        }
+    )
+    queued = make_metadata("queued").model_copy(
+        update={
+            "status": RunStatus.QUEUED,
+            "created_at": datetime(2026, 9, 27, 10, 0, tzinfo=UTC),
+            "started_at": None,
+            "completed_at": None,
+        }
+    )
+    run = make_run([make_score("safe", bug_present=False)])
+    repository.save_run(older, run, {"safe": False})
+    repository.save_run(newer, run, {"safe": False})
+    repository.create_run(
+        queued,
+        max_concurrency=4,
+        timeout_seconds=60,
+        max_retries=1,
+    )
+
+    assert [record.metadata.run_id for record in repository.list_records()] == [
+        "queued",
+        "newer",
+        "older",
+    ]
+    assert [
+        record.metadata.run_id
+        for record in repository.list_records(status=RunStatus.COMPLETED, limit=1)
+    ] == ["newer"]
+    connection.close()
+
+
+def test_list_records_validates_limit_and_handles_empty_history() -> None:
+    connection, repository = make_repository()
+
+    assert repository.list_records() == []
+    with pytest.raises(ValueError, match="limit must be between 1 and 100"):
+        repository.list_records(limit=0)
+    with pytest.raises(ValueError, match="limit must be between 1 and 100"):
+        repository.list_records(limit=MAX_RUN_LIST_LIMIT + 1)
     connection.close()

@@ -118,6 +118,10 @@ def test_run_endpoints_queue_without_blocking_and_return_saved_results(tmp_path)
         assert response.status_code == 202
         assert response.json()["metadata"]["status"] == "queued"
         assert len(executor.jobs) == 1
+        assert [run["metadata"]["run_id"] for run in client.get("/runs").json()] == [
+            "run-api-1"
+        ]
+        assert client.get("/runs", params={"status": "completed"}).json() == []
         assert client.get("/runs/run-api-1").json()["metadata"]["status"] == "queued"
         assert client.get("/runs/run-api-1/results").status_code == 409
 
@@ -126,6 +130,9 @@ def test_run_endpoints_queue_without_blocking_and_return_saved_results(tmp_path)
         status_response = client.get("/runs/run-api-1")
         assert status_response.status_code == 200
         assert status_response.json()["metadata"]["status"] == "completed"
+        completed_runs = client.get("/runs", params={"status": "completed", "limit": 1})
+        assert completed_runs.status_code == 200
+        assert completed_runs.json()[0]["metadata"]["run_id"] == "run-api-1"
         result_response = client.get("/runs/run-api-1/results")
         assert result_response.status_code == 200
         assert result_response.json()["benchmark_run"]["requested_cases"] == 24
@@ -137,6 +144,10 @@ def test_validation_and_missing_run_responses(tmp_path) -> None:
     app = create_app(make_service(tmp_path, executor))
 
     with TestClient(app) as client:
+        assert client.get("/runs").json() == []
+        assert client.get("/runs", params={"limit": 0}).status_code == 422
+        assert client.get("/runs", params={"limit": 101}).status_code == 422
+        assert client.get("/runs", params={"status": "unknown"}).status_code == 422
         assert client.post("/runs", json={}).status_code == 422
         invalid_smoke = client.post(
             "/runs", json={"model": "gpt-test", "smoke_case": "not-a-case"}

@@ -159,16 +159,16 @@ The dashboard will derive category, file, and line accuracy from `benchmark_run.
 This avoids storing a second copy of aggregates or adding a dedicated server-side comparison
 endpoint.
 
-One backend capability is still missing: discovering selectable runs. Add:
+Selectable runs are discovered through:
 
 ```text
 GET /runs?status=completed&limit=50
 ```
 
-The response should contain `RunRecord` values ordered newest first. The first version needs only a
-bounded `limit` and an optional exact status filter; cursor pagination and free-text search are out
-of scope. The repository, not the HTTP handler, owns the query and ordering. Tests must cover newest-
-first ordering, status filtering, the limit boundary, and an empty history.
+The response contains `RunRecord` values ordered by creation time, newest first, with run ID as a
+deterministic tie-breaker. The first version supports a `limit` from 1 through 100 and an optional
+exact status filter; cursor pagination and free-text search are out of scope. The repository, not
+the HTTP handler, owns the query and ordering.
 
 The browser then:
 
@@ -198,7 +198,7 @@ The browser then:
 
 ## Implementation sequence
 
-1. Add the bounded run-list repository method and `GET /runs` endpoint.
+1. ~~Add the bounded run-list repository method and `GET /runs` endpoint.~~ Complete.
 2. Build the baseline/candidate selectors and headline metric comparison.
 3. Add the filterable per-case change table and complete the defined interface states.
 
@@ -211,4 +211,4 @@ Each step is independently testable and should remain a separate development-day
 - [x] Per-case improvements, regressions, unchanged cases, and unavailable outcomes are defined.
 - [x] Loading, empty, partial, error, and incompatibility states are specified.
 - [x] The written wireframe fixes information hierarchy without prescribing a heavy visual system.
-- [x] The only missing backend dependency is identified as a bounded run-list endpoint.
+- [x] The bounded run-list backend dependency is implemented and tested.

@@ -63,7 +63,9 @@ the run row and all preceding case rows.
 
 `get_run` reconstructs the ordered `BenchmarkRun` and its typed `RunMetadata`. It uses
 `run_summaries` for aggregate values instead of trusting a copied summary. `get_summary` exposes the
-same derived metrics directly for future API consumers. Missing run IDs return `None`.
+same derived metrics directly for future API consumers. `list_records` returns a bounded list ordered
+by creation time and supports an exact lifecycle-status filter for API selectors. Missing run IDs
+return `None`.
 
 Persistence remains opt-in: neither offline scoring nor live model execution opens a database. The
 caller owns the SQLite connection and decides when a completed run should be stored.
@@ -75,6 +77,6 @@ and timezone-aware timestamps, persists queued/running/terminal transitions, exe
 outside request handlers, and exposes status and saved results. A second migration adds run-level
 error details for failures that occur before case outcomes exist.
 
-The next repository extension is a bounded, newest-first run listing for the comparison dashboard.
-Its contract and consumer behavior are defined in the
+The bounded, newest-first run listing required by the comparison dashboard is now available through
+`GET /runs`. Its consumer behavior is defined in the
 [run-comparison experience](run-comparison-experience.md).

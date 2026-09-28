@@ -8,10 +8,12 @@ from typing import Annotated
 from uuid import uuid4
 
 import uvicorn
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, Query, status
 from pydantic import BaseModel, ConfigDict, Field
 
 from patchbench.history import (
+    DEFAULT_RUN_LIST_LIMIT,
+    MAX_RUN_LIST_LIMIT,
     HistoryRepository,
     RunMetadata,
     RunMode,
@@ -123,6 +125,15 @@ class BenchmarkService:
         with self._repository() as repository:
             return repository.get_record(run_id)
 
+    def list_run_records(
+        self,
+        *,
+        status: RunStatus | None = None,
+        limit: int = DEFAULT_RUN_LIST_LIMIT,
+    ) -> list[RunRecord]:
+        with self._repository() as repository:
+            return repository.list_records(status=status, limit=limit)
+
     def get_results(self, run_id: str) -> StoredRun | None:
         with self._repository() as repository:
             return repository.get_run(run_id)
@@ -220,6 +231,13 @@ def create_app(service: BenchmarkService | None = None) -> FastAPI:
             return benchmark_service.start_run(request)
         except ValueError as exc:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    @application.get("/runs", response_model=list[RunRecord])
+    def list_runs(
+        run_status: Annotated[RunStatus | None, Query(alias="status")] = None,
+        limit: Annotated[int, Query(ge=1, le=MAX_RUN_LIST_LIMIT)] = DEFAULT_RUN_LIST_LIMIT,
+    ) -> list[RunRecord]:
+        return benchmark_service.list_run_records(status=run_status, limit=limit)
 
     @application.get("/runs/{run_id}", response_model=RunRecord)
     def get_run(run_id: str) -> RunRecord:
