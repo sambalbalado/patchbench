@@ -68,8 +68,13 @@ same derived metrics directly for future API consumers. Missing run IDs return `
 Persistence remains opt-in: neither offline scoring nor live model execution opens a database. The
 caller owns the SQLite connection and decides when a completed run should be stored.
 
-## Next integration boundary
+## API integration
 
-FastAPI handlers can now call `HistoryRepository` rather than embedding SQL. The API layer still
-needs to create run identifiers and timezone-aware timestamps, execute work outside request
-handlers, and expose run status and stored results.
+FastAPI handlers call `HistoryRepository` rather than embedding SQL. The API creates run identifiers
+and timezone-aware timestamps, persists queued/running/terminal transitions, executes benchmarks
+outside request handlers, and exposes status and saved results. A second migration adds run-level
+error details for failures that occur before case outcomes exist.
+
+The next repository extension is a bounded, newest-first run listing for the comparison dashboard.
+Its contract and consumer behavior are defined in the
+[run-comparison experience](run-comparison-experience.md).

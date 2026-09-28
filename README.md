@@ -219,8 +219,9 @@ Milestones 1–4 are complete: PatchBench has a real-model baseline, reliable bo
 audited coverage matrix, a validated `review-v2` comparison, and a tested experiment-history API.
 Next steps are:
 
-1. Define the run-comparison experience and the metrics it needs.
-2. Add a small dashboard for comparing configurations.
+1. Add the bounded run-list endpoint required by the selected
+   [run-comparison experience](docs/run-comparison-experience.md).
+2. Build the summary comparison and per-case change views as separate daily increments.
 3. Prepare deployment, continuous testing, and portfolio documentation.
 
 ## License
