@@ -1,5 +1,9 @@
 # PatchBench
 
+[![Continuous integration](https://github.com/sambalbalado/patchbench/actions/workflows/ci.yml/badge.svg)](https://github.com/sambalbalado/patchbench/actions/workflows/ci.yml)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
 PatchBench is a reproducible evaluation harness for AI code reviewers. It answers a practical
 question: **does an AI reviewer find real defects without inventing new ones?**
 
@@ -13,7 +17,61 @@ The public demo is read-only: it presents the two versioned baselines without ex
 or allowing visitors to create paid model runs. The free service may need a short warm-up after a
 period of inactivity.
 
-## Setup
+## Why PatchBench
+
+AI code-review demos often show a handful of successful findings but do not measure false alarms,
+failed requests, or cost. PatchBench turns that demo into a repeatable evaluation:
+
+1. Load a versioned set of patches with known answers.
+2. Obtain a structured review from saved predictions or an OpenAI model.
+3. Validate every response against one strict schema.
+4. Score bug detection, category, file, and line while tracking false positives separately.
+5. Preserve latency, usage, cost, and failures so two runs can be compared honestly.
+
+The 24-case corpus is deliberately balanced: 12 patches introduce defects and 12 are safe. A
+reviewer therefore cannot score well merely by reporting a problem for every change.
+
+## Results at a glance
+
+Both published runs used `gpt-5-mini`; the candidate used the audited `review-v2` prompt and label
+contract. These are observed results on this corpus, not a general model-quality claim.
+
+| Metric | `review-v1` | `review-v2` |
+| --- | ---: | ---: |
+| Completed cases | 24 / 24 | 24 / 24 |
+| Seeded bugs detected | 12 / 12 | 12 / 12 |
+| Detection accuracy | 83.3% | 91.7% |
+| False-positive rate | 33.3% | 16.7% |
+| Overall rubric accuracy | 83.3% | 96.7% |
+| Average latency per case | 16.59 s | 10.62 s |
+| Estimated run cost | $0.04372975 | $0.04523200 |
+
+Read the [portfolio benchmark report](docs/benchmark-report.md) for the scoring method,
+interpretation, threats to validity, and links to the versioned raw results.
+
+## Architecture
+
+PatchBench separates benchmark data, model I/O, deterministic scoring, persistence, and
+presentation. The CLI and API share the same loader, response schema, evaluator, and live runner;
+the dashboard only reads persisted results and computes presentation-level comparisons.
+
+```mermaid
+flowchart LR
+    Corpus[Versioned patches<br/>and expected findings] --> Loader[Loader + validation]
+    Loader --> Runner[Offline or live runner]
+    Runner --> Contract[ReviewResult schema]
+    Contract --> Evaluator[Deterministic evaluator]
+    Evaluator --> Result[BenchmarkRun + metrics]
+    Result --> History[(SQLite history)]
+    History --> API[FastAPI]
+    API --> Dashboard[Comparison dashboard]
+    Model[OpenAI Responses API] <--> Runner
+```
+
+The [architecture guide](docs/architecture.md) explains the execution paths, persistence boundary,
+public read-only deployment, and the reasoning behind those separations.
+
+## Quick start
 
 PatchBench requires Python 3.11 or newer.
 
@@ -141,6 +199,23 @@ See the [deployment and rollback guide](docs/deployment.md) for the hosting mode
 limitations, account-side launch steps, smoke test, and the security requirements for ever
 enabling live runs on a hosted service.
 
+The deployed health contract is intentionally small:
+
+```bash
+$ curl https://patchbench-demo.onrender.com/health
+{"status":"ok","database":"ready","live_runs_enabled":false}
+```
+
+## Documentation
+
+- [Architecture and data flow](docs/architecture.md)
+- [Portfolio benchmark report](docs/benchmark-report.md)
+- [Benchmark coverage matrix](docs/benchmark-coverage.md)
+- [Label audit and category contract](docs/label-audit-2026-09-20.md)
+- [Experiment-history schema](docs/experiment-history-schema.md)
+- [Run-comparison experience](docs/run-comparison-experience.md)
+- [Deployment, smoke test, and rollback](docs/deployment.md)
+
 ## Benchmark format
 
 Each case contains a code patch and its expected finding:
@@ -242,6 +317,24 @@ category, file, and line on every positive case. The run cost an estimated $0.04
 [`review-v2` comparison report](docs/baseline-review-v2-2026-09-22.md) and
 [machine-readable result](results/gpt-5-mini-review-v2-baseline-2026-09-22.json).
 
+## Limitations and responsible use
+
+- The corpus contains 24 small, synthetic Python patches. It does not represent every language,
+  repository shape, defect type, or production review condition.
+- The published comparison is not a controlled prompt-only experiment: the category contract and
+  several labels were audited between `review-v1` and `review-v2`.
+- Each configuration has one recorded run, so the results do not measure model-to-model variance or
+  provide statistical confidence intervals.
+- File and line scores measure localization against curated labels with a ±2-line tolerance; they do
+  not measure whether a suggested fix is correct or complete.
+- Latency and price are point-in-time observations. Provider load and pricing can change, and cost
+  estimates are only produced for models with an explicit versioned pricing entry.
+- PatchBench evaluates a reviewer; it does not make that reviewer safe to use autonomously. Model
+  findings should support human review, not replace it, especially for security-sensitive changes.
+- Only code that the operator is authorized to process should be sent to a model provider. Secrets,
+  personal data, and proprietary source require the same handling they would receive in any other
+  external code-analysis workflow.
+
 ## Roadmap
 
 Milestones 1–5 are complete: PatchBench has a real-model baseline, reliable bounded execution, an
@@ -249,8 +342,7 @@ audited coverage matrix, a validated `review-v2` comparison, a tested experiment
 two-run dashboard with aggregate and case-level evidence. Milestone 6 now has a safe deployment
 configuration, continuous testing, and a smoke-tested public demo. The next steps are:
 
-1. Polish the portfolio documentation and architecture explanation.
-2. Record a concise PatchBench demonstration.
+1. Record a concise PatchBench demonstration.
 
 ## License
 
