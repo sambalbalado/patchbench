@@ -1,5 +1,7 @@
 "use strict";
 
+const { compareCases } = window.PatchBenchComparison;
+
 const elements = {
   baselineSelect: document.querySelector("#baseline-select"),
   candidateSelect: document.querySelector("#candidate-select"),
@@ -14,12 +16,33 @@ const elements = {
   baselineDetails: document.querySelector("#baseline-details"),
   candidateDetails: document.querySelector("#candidate-details"),
   metricRows: document.querySelector("#metric-rows"),
+  caseFilters: document.querySelector("#case-filters"),
+  caseSummary: document.querySelector("#case-summary"),
+  caseTableWrap: document.querySelector(".case-table-wrap"),
+  caseRows: document.querySelector("#case-rows"),
+  caseEmpty: document.querySelector("#case-empty"),
 };
 
 const state = {
   runs: [],
   comparisonController: null,
   retryAction: null,
+  caseComparisons: [],
+  caseFilter: "changes",
+};
+
+const changeLabels = {
+  improved: "Improved",
+  regressed: "Regressed",
+  unchanged: "Unchanged",
+  unavailable: "Unavailable",
+};
+
+const changeOrder = {
+  regressed: 0,
+  improved: 1,
+  unchanged: 2,
+  unavailable: 3,
 };
 
 const metricDefinitions = [
@@ -326,6 +349,210 @@ function metricRow(metric, baseline, candidate, allowDelta) {
   return row;
 }
 
+function formatCorrectness(value) {
+  if (value === null || value === undefined) return "Not applicable";
+  return value ? "Correct" : "Incorrect";
+}
+
+function formatCaseScore(outcome) {
+  if (outcome.status !== "completed") return null;
+  const score = outcome.score;
+  const percentage = outcome.ratio === null ? "Not available" : `${(outcome.ratio * 100).toFixed(1)}%`;
+  return `${percentage} (${score.points_earned}/${score.points_possible})`;
+}
+
+function outcomeSummary(outcome) {
+  if (outcome.status === "completed") return `Completed · ${formatCaseScore(outcome)}`;
+  if (outcome.status === "failed") return `Failed · ${outcome.failure.error_type}`;
+  if (outcome.status === "skipped") return "Skipped";
+  return "Absent from run";
+}
+
+function changeSummary(change) {
+  if (typeof change.delta === "number") {
+    return `${change.reason} · ${signed(change.delta * 100, 1)} pp`;
+  }
+  return change.reason;
+}
+
+function addDefinition(list, term, value) {
+  const group = document.createElement("div");
+  const dt = document.createElement("dt");
+  const dd = document.createElement("dd");
+  dt.textContent = term;
+  dd.textContent = value;
+  group.append(dt, dd);
+  list.append(group);
+}
+
+function evidenceFields(outcome) {
+  if (outcome.status === "completed") {
+    const score = outcome.score;
+    return [
+      ["Execution", "Completed"],
+      ["Rubric score", formatCaseScore(outcome)],
+      ["Detection", formatCorrectness(score.detection_correct)],
+      ["Category", formatCorrectness(score.category_correct)],
+      ["File", formatCorrectness(score.file_correct)],
+      ["Line", formatCorrectness(score.line_correct)],
+      ["False positive", score.false_positive ? "Yes" : "No"],
+      ["Latency", score.latency_ms == null ? "Not available" : formatDuration(score.latency_ms)],
+      [
+        "Estimated cost",
+        score.estimated_cost_usd == null
+          ? "Not available"
+          : `$${score.estimated_cost_usd.toFixed(4)}`,
+      ],
+    ];
+  }
+  if (outcome.status === "failed") {
+    return [
+      ["Execution", "Failed"],
+      ["Error type", outcome.failure.error_type],
+      ["Message", outcome.failure.message],
+      [
+        "Latency",
+        outcome.failure.latency_ms == null
+          ? "Not available"
+          : formatDuration(outcome.failure.latency_ms),
+      ],
+    ];
+  }
+  if (outcome.status === "skipped") {
+    return [
+      ["Execution", "Skipped"],
+      ["Evidence", "No model result was recorded for this case."],
+    ];
+  }
+  return [
+    ["Execution", "Absent"],
+    ["Evidence", "This case is not part of this run's benchmark corpus."],
+  ];
+}
+
+function evidencePanel(label, outcome) {
+  const panel = document.createElement("article");
+  panel.className = "case-evidence";
+  const heading = document.createElement("h4");
+  heading.textContent = label;
+  const status = document.createElement("span");
+  status.className = `outcome-pill ${outcome.status}`;
+  status.textContent = outcome.status === "absent" ? "Absent" : outcome.status;
+  const list = document.createElement("dl");
+  for (const [term, value] of evidenceFields(outcome)) addDefinition(list, term, value);
+  panel.append(heading, status, list);
+  return panel;
+}
+
+function caseRows(comparison, index) {
+  const row = document.createElement("tr");
+  row.className = "case-row";
+
+  const caseCell = document.createElement("th");
+  caseCell.scope = "row";
+  const caseName = document.createElement("code");
+  caseName.textContent = comparison.caseId;
+  caseCell.append(caseName);
+
+  const baselineCell = document.createElement("td");
+  baselineCell.textContent = outcomeSummary(comparison.baseline);
+  const candidateCell = document.createElement("td");
+  candidateCell.textContent = outcomeSummary(comparison.candidate);
+
+  const changeCell = document.createElement("td");
+  const changePill = document.createElement("span");
+  changePill.className = `case-change ${comparison.change.status}`;
+  changePill.textContent = changeLabels[comparison.change.status];
+  const changeNote = document.createElement("span");
+  changeNote.className = "case-change-note";
+  changeNote.textContent = changeSummary(comparison.change);
+  changeCell.append(changePill, changeNote);
+
+  const actionCell = document.createElement("td");
+  const detailId = `case-details-${index}`;
+  const button = document.createElement("button");
+  button.className = "case-detail-button";
+  button.type = "button";
+  button.setAttribute("aria-expanded", "false");
+  button.setAttribute("aria-controls", detailId);
+  button.textContent = "View evidence";
+  actionCell.append(button);
+  row.append(caseCell, baselineCell, candidateCell, changeCell, actionCell);
+
+  const detailRow = document.createElement("tr");
+  detailRow.id = detailId;
+  detailRow.className = "case-detail-row";
+  detailRow.hidden = true;
+  const detailCell = document.createElement("td");
+  detailCell.colSpan = 5;
+  const grid = document.createElement("div");
+  grid.className = "case-detail-grid";
+  grid.append(
+    evidencePanel("Baseline evidence", comparison.baseline),
+    evidencePanel("Candidate evidence", comparison.candidate),
+  );
+  detailCell.append(grid);
+  detailRow.append(detailCell);
+
+  button.addEventListener("click", () => {
+    const expanded = button.getAttribute("aria-expanded") === "true";
+    button.setAttribute("aria-expanded", String(!expanded));
+    button.textContent = expanded ? "View evidence" : "Hide evidence";
+    detailRow.hidden = expanded;
+  });
+
+  return [row, detailRow];
+}
+
+function matchesCaseFilter(comparison, filter) {
+  if (filter === "all") return true;
+  if (filter === "changes") {
+    return comparison.change.status === "regressed" || comparison.change.status === "improved";
+  }
+  return comparison.change.status === filter;
+}
+
+function renderCaseComparisons() {
+  const counts = {
+    all: state.caseComparisons.length,
+    changes: 0,
+    regressed: 0,
+    improved: 0,
+    unchanged: 0,
+    unavailable: 0,
+  };
+  for (const comparison of state.caseComparisons) {
+    counts[comparison.change.status] += 1;
+    if (comparison.change.status === "regressed" || comparison.change.status === "improved") {
+      counts.changes += 1;
+    }
+  }
+
+  for (const button of elements.caseFilters.querySelectorAll("button[data-filter]")) {
+    const filter = button.dataset.filter;
+    button.setAttribute("aria-pressed", String(filter === state.caseFilter));
+    button.querySelector("[data-count]").textContent = counts[filter];
+  }
+
+  const visible = state.caseComparisons
+    .filter((comparison) => matchesCaseFilter(comparison, state.caseFilter))
+    .sort(
+      (left, right) =>
+        changeOrder[left.change.status] - changeOrder[right.change.status] ||
+        left.originalIndex - right.originalIndex,
+    );
+  elements.caseSummary.textContent = `${visible.length} of ${counts.all} cases shown · ${counts.regressed} regressed · ${counts.improved} improved`;
+  elements.caseRows.replaceChildren(...visible.flatMap(caseRows));
+  elements.caseTableWrap.hidden = visible.length === 0;
+  elements.caseEmpty.hidden = visible.length !== 0;
+}
+
+function renderCases(baseline, candidate) {
+  state.caseComparisons = compareCases(baseline, candidate);
+  state.caseFilter = "changes";
+  renderCaseComparisons();
+}
+
 function renderRunCard(run, nameElement, detailsElement) {
   const metadata = run.metadata;
   nameElement.textContent = `${metadata.model || metadata.mode} · ${metadata.prompt_version || "—"}`;
@@ -369,6 +596,7 @@ function renderComparison(baseline, candidate) {
   elements.metricRows.replaceChildren(
     ...metricDefinitions.map((metric) => metricRow(metric, baseline, candidate, allowDelta)),
   );
+  renderCases(baseline, candidate);
   elements.comparisonView.hidden = false;
   elements.comparisonView.setAttribute("aria-busy", "false");
 }
@@ -446,5 +674,11 @@ elements.baselineSelect.addEventListener("change", () => {
 });
 elements.candidateSelect.addEventListener("change", compareSelections);
 elements.retryButton.addEventListener("click", () => state.retryAction?.());
+elements.caseFilters.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-filter]");
+  if (!button) return;
+  state.caseFilter = button.dataset.filter;
+  renderCaseComparisons();
+});
 
 loadRuns();

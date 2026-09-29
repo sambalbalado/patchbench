@@ -382,7 +382,11 @@ class HistoryRepository:
             BenchmarkSummary(
                 cases=scores,
                 detection_accuracy=summary_row["detection_accuracy"],
-                false_positive_rate=summary_row["false_positive_rate"],
+                false_positive_rate=(
+                    summary_row["false_positive_rate"]
+                    if summary_row["false_positive_rate"] is not None
+                    else 0.0
+                ),
                 total_accuracy=summary_row["total_accuracy"],
                 model=metadata.model,
                 prompt_version=metadata.prompt_version,

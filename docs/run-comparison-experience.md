@@ -1,6 +1,6 @@
 # Run comparison experience
 
-Status: selected for Milestone 5 implementation on 2026-09-28.
+Status: implemented for Milestone 5 on 2026-09-29.
 
 ## Product decision
 
@@ -200,7 +200,7 @@ The browser then:
 
 1. ~~Add the bounded run-list repository method and `GET /runs` endpoint.~~ Complete.
 2. ~~Build the baseline/candidate selectors and headline metric comparison.~~ Complete.
-3. Add the filterable per-case change table and complete the defined interface states.
+3. ~~Add the filterable per-case change table and complete the defined interface states.~~ Complete.
 
 Each step is independently testable and should remain a separate development-day commit.
 
@@ -214,4 +214,4 @@ Each step is independently testable and should remain a separate development-day
 - [x] The bounded run-list backend dependency is implemented and tested.
 - [x] The summary dashboard serves compatible run selectors, raw metric values, explicit deltas,
   direction labels, completion coverage, and resilient loading and error states.
-- [ ] The case-level drill-down implements the specified alignment, outcome, and filtering rules.
+- [x] The case-level drill-down implements the specified alignment, outcome, and filtering rules.

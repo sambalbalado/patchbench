@@ -185,6 +185,7 @@ def test_dashboard_and_local_assets_are_served_with_security_headers(tmp_path) -
     with TestClient(app) as client:
         dashboard = client.get("/")
         styles = client.get("/assets/dashboard.css")
+        comparison = client.get("/assets/comparison.js")
         script = client.get("/assets/dashboard.js")
 
         assert dashboard.status_code == 200
@@ -193,10 +194,18 @@ def test_dashboard_and_local_assets_are_served_with_security_headers(tmp_path) -
         assert 'id="baseline-select"' in dashboard.text
         assert 'id="candidate-select"' in dashboard.text
         assert 'id="metric-rows"' in dashboard.text
+        assert 'id="case-filters"' in dashboard.text
+        assert 'id="case-rows"' in dashboard.text
         assert styles.status_code == 200
         assert styles.headers["content-type"].startswith("text/css")
         assert ".metric-table" in styles.text
+        assert ".case-detail-grid" in styles.text
+        assert comparison.status_code == 200
+        assert comparison.headers["content-type"].startswith("text/javascript")
+        assert "function compareCases" in comparison.text
+        assert "function classifyChange" in comparison.text
         assert script.status_code == 200
         assert script.headers["content-type"].startswith("text/javascript")
         assert 'requestJson("/runs?status=completed&limit=50")' in script.text
         assert "/assets/dashboard.js" not in client.get("/openapi.json").text
+        assert "/assets/comparison.js" not in client.get("/openapi.json").text

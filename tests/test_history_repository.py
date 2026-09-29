@@ -183,6 +183,21 @@ def test_partial_run_preserves_completed_failed_and_skipped_order() -> None:
     connection.close()
 
 
+def test_run_without_safe_cases_round_trips_zero_false_positive_rate() -> None:
+    connection, repository = make_repository()
+    metadata = make_metadata("buggy-only-run")
+    benchmark_run = make_run([make_score("buggy", bug_present=True)])
+
+    repository.save_run(metadata, benchmark_run, {"buggy": True})
+
+    stored = repository.get_run(metadata.run_id)
+    assert stored is not None
+    assert stored.benchmark_run == benchmark_run
+    assert stored.benchmark_run.summary is not None
+    assert stored.benchmark_run.summary.false_positive_rate == 0.0
+    connection.close()
+
+
 def test_invalid_case_data_rolls_back_the_entire_run() -> None:
     connection, repository = make_repository()
     metadata = make_metadata("invalid-run")

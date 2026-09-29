@@ -6,6 +6,7 @@
     <meta name="description" content="Compare two PatchBench code-review benchmark runs.">
     <title>Run comparison · PatchBench</title>
     <link rel="stylesheet" href="/assets/dashboard.css">
+    <script src="/assets/comparison.js" defer></script>
     <script src="/assets/dashboard.js" defer></script>
   </head>
   <body>
@@ -119,16 +120,56 @@
           </div>
         </section>
 
-        <section class="next-section" aria-labelledby="cases-title">
-          <div>
-            <p class="step-label">Next development increment</p>
-            <h2 id="cases-title">Case-level changes</h2>
-            <p>
-              The next PatchBench slice will explain which patches improved, regressed, or became
-              unavailable. Today’s summary deliberately stays focused on trustworthy aggregates.
-            </p>
+        <section class="cases-section" aria-labelledby="cases-title">
+          <div class="section-heading cases-heading">
+            <div>
+              <p class="step-label">Step 3</p>
+              <h2 id="cases-title">Inspect case-level changes</h2>
+            </div>
+            <p id="case-summary" role="status" aria-live="polite"></p>
           </div>
-          <span class="coming-soon">Planned</span>
+
+          <div id="case-filters" class="case-filters" aria-label="Filter case changes">
+            <button type="button" data-filter="changes" aria-pressed="true">
+              Changes <span data-count="changes">0</span>
+            </button>
+            <button type="button" data-filter="regressed" aria-pressed="false">
+              Regressions <span data-count="regressed">0</span>
+            </button>
+            <button type="button" data-filter="improved" aria-pressed="false">
+              Improvements <span data-count="improved">0</span>
+            </button>
+            <button type="button" data-filter="unchanged" aria-pressed="false">
+              Unchanged <span data-count="unchanged">0</span>
+            </button>
+            <button type="button" data-filter="unavailable" aria-pressed="false">
+              Unavailable <span data-count="unavailable">0</span>
+            </button>
+            <button type="button" data-filter="all" aria-pressed="false">
+              All <span data-count="all">0</span>
+            </button>
+          </div>
+
+          <div class="case-table-wrap">
+            <table class="case-table">
+              <caption class="visually-hidden">
+                Case outcomes for the selected baseline and candidate runs
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Case</th>
+                  <th scope="col">Baseline</th>
+                  <th scope="col">Candidate</th>
+                  <th scope="col">Change</th>
+                  <th scope="col"><span class="visually-hidden">Evidence</span></th>
+                </tr>
+              </thead>
+              <tbody id="case-rows"></tbody>
+            </table>
+          </div>
+          <p id="case-empty" class="case-empty" hidden>
+            No cases match this filter.
+          </p>
         </section>
       </section>
     </main>

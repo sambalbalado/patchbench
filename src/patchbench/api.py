@@ -249,6 +249,15 @@ def create_app(service: BenchmarkService | None = None) -> FastAPI:
             headers=DASHBOARD_HEADERS,
         )
 
+    @application.get("/assets/comparison.js", include_in_schema=False)
+    def comparison_script() -> Response:
+        content = files("patchbench").joinpath("web", "comparison.js").read_text()
+        return Response(
+            content=content,
+            media_type="text/javascript",
+            headers=DASHBOARD_HEADERS,
+        )
+
     @application.post(
         "/runs",
         response_model=RunRecord,

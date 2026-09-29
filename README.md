@@ -103,8 +103,9 @@ patchbench-api
 The comparison dashboard is available at `http://127.0.0.1:8000/`, and the interactive API
 documentation remains available at `http://127.0.0.1:8000/docs`. The dashboard automatically
 selects the two most recent compatible completed runs and shows raw values, explicit deltas,
-direction labels, and completion coverage. A run starts with a small request that names the model
-and bounded execution settings:
+direction labels, and completion coverage. Its case table aligns results by case ID, separates
+quality changes from execution failures, and expands to show scoring, latency, cost, and error
+evidence. A run starts with a small request that names the model and bounded execution settings:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/runs \
@@ -171,6 +172,7 @@ All automated model tests use mocked clients and make no network or paid API cal
 ```bash
 pytest
 ruff check .
+node --test tests/dashboard_logic.test.js
 ```
 
 ## Design choices
@@ -201,6 +203,8 @@ ruff check .
   they contain no SQL. Background execution keeps status and result reads responsive during a run.
 - The comparison dashboard is served from the same FastAPI process, uses the existing run-list and
   result endpoints, and computes presentation-only deltas in a dependency-free browser client.
+- Case comparisons align by stable case ID rather than result position. Missing, failed, and skipped
+  outcomes remain explicit instead of receiving invented scores.
 
 ## First real baseline
 
@@ -221,13 +225,13 @@ category, file, and line on every positive case. The run cost an estimated $0.04
 
 ## Roadmap
 
-Milestones 1–4 are complete: PatchBench has a real-model baseline, reliable bounded execution, an
-audited coverage matrix, a validated `review-v2` comparison, and a tested experiment-history API.
-Milestone 5 now includes the summary comparison dashboard. The next step is:
+Milestones 1–5 are complete: PatchBench has a real-model baseline, reliable bounded execution, an
+audited coverage matrix, a validated `review-v2` comparison, a tested experiment-history API, and a
+two-run dashboard with aggregate and case-level evidence. The next steps are:
 
-1. Add the per-case comparison drill-down from the selected
-   [run-comparison experience](docs/run-comparison-experience.md).
-2. Prepare deployment, continuous testing, and portfolio documentation.
+1. Deploy the API and dashboard with continuous testing.
+2. Polish the portfolio documentation and architecture explanation.
+3. Record a concise PatchBench demonstration.
 
 ## License
 
