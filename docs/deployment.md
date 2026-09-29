@@ -5,6 +5,19 @@ two versioned benchmark baselines, but `POST /runs` returns `403 Forbidden`. Thi
 the live-run endpoint creates paid OpenAI requests and currently has no user authentication or
 per-user budget control.
 
+**Live service:** [https://patchbench-demo.onrender.com/](https://patchbench-demo.onrender.com/)
+
+## Deployment record
+
+The first public deployment was verified on 2026-09-29 from Git commit `65f9bae`. The smoke test
+confirmed:
+
+- `GET /`, `GET /health`, and `GET /runs?status=completed&limit=2` return `200`.
+- History contains the seeded `review-v1` and `review-v2` baseline runs.
+- Both result endpoints reconstruct all 24 completed cases.
+- The health response reports `database: ready` and `live_runs_enabled: false`.
+- `POST /runs` returns `403`, so public traffic cannot create paid OpenAI requests.
+
 ## Deployment model
 
 The repository includes a Render Blueprint in `render.yaml`. It creates one free Python web

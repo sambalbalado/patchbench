@@ -7,6 +7,12 @@ It runs labeled code patches through either saved predictions or a real OpenAI m
 detection accuracy, category accuracy, location accuracy, false-positive rate, latency, token usage,
 and estimated cost.
 
+**[Open the live PatchBench comparison dashboard](https://patchbench-demo.onrender.com/)**
+
+The public demo is read-only: it presents the two versioned baselines without exposing an API key
+or allowing visitors to create paid model runs. The free service may need a short warm-up after a
+period of inactivity.
+
 ## Setup
 
 PatchBench requires Python 3.11 or newer.
@@ -124,7 +130,9 @@ API key stays in the server process environment and is not part of the JSON cont
 
 ## Read-only public demo deployment
 
-The repository includes a Render Blueprint and GitHub Actions workflow for a safe public demo.
+The live demo is available at
+[patchbench-demo.onrender.com](https://patchbench-demo.onrender.com/). The repository includes a
+Render Blueprint and GitHub Actions workflow for this safe public environment.
 `render.yaml` disables live benchmark creation, omits the OpenAI key, and seeds SQLite from the two
 committed baseline results whenever the service starts. The dashboard and saved-result endpoints
 remain available, while `POST /runs` returns `403` so a visitor cannot spend API credits.
@@ -239,11 +247,10 @@ category, file, and line on every positive case. The run cost an estimated $0.04
 Milestones 1–5 are complete: PatchBench has a real-model baseline, reliable bounded execution, an
 audited coverage matrix, a validated `review-v2` comparison, a tested experiment-history API, and a
 two-run dashboard with aggregate and case-level evidence. Milestone 6 now has a safe deployment
-configuration and continuous testing. The next steps are:
+configuration, continuous testing, and a smoke-tested public demo. The next steps are:
 
-1. Launch and smoke-test the public read-only demo.
-2. Polish the portfolio documentation and architecture explanation.
-3. Record a concise PatchBench demonstration.
+1. Polish the portfolio documentation and architecture explanation.
+2. Record a concise PatchBench demonstration.
 
 ## License
 
