@@ -173,6 +173,11 @@ class HistoryRepository:
         initialize_history(connection)
         self._connection = connection
 
+    def ping(self) -> None:
+        """Raise when the history database cannot execute a minimal query."""
+
+        self._connection.execute("SELECT 1").fetchone()
+
     def create_run(
         self,
         metadata: RunMetadata,

@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: patchbench-demo
+    runtime: python
+    plan: free
+    region: singapore
+    buildCommand: python -m pip install .
+    startCommand: patchbench-seed-demo && patchbench-api
+    healthCheckPath: /health
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: PATCHBENCH_ALLOW_LIVE_RUNS
+        value: "false"
+      - key: PATCHBENCH_DATABASE
+        value: /tmp/patchbench-demo.sqlite3
+      - key: PATCHBENCH_BENCHMARK
+        value: benchmark
+      - key: PATCHBENCH_RESULTS
+        value: results
+      - key: PATCHBENCH_HOST
+        value: 0.0.0.0

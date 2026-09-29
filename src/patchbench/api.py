@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager, contextmanager
 from datetime import UTC, datetime
 from importlib.resources import files
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 from uuid import uuid4
 
 import uvicorn
@@ -34,6 +34,12 @@ from patchbench.runner import DEFAULT_MAX_CONCURRENCY, MAX_CONCURRENCY, run_open
 from patchbench.schemas import BenchmarkCase, BenchmarkRun
 
 DEFAULT_TIMEOUT_SECONDS = 60.0
+DEFAULT_HOST = "127.0.0.1"
+DEFAULT_PORT = 8000
+LIVE_RUNS_DISABLED_MESSAGE = (
+    "Live benchmark runs are disabled in this deployment. "
+    "Use the read-only dashboard to inspect saved results."
+)
 DASHBOARD_HEADERS = {
     "Content-Security-Policy": (
         "default-src 'self'; connect-src 'self'; img-src 'self' data:; "
@@ -51,6 +57,12 @@ class StartRunRequest(BaseModel):
     timeout_seconds: Annotated[float, Field(gt=0)] = DEFAULT_TIMEOUT_SECONDS
     max_retries: Annotated[int, Field(ge=0, le=MAX_RETRIES)] = DEFAULT_MAX_RETRIES
     smoke_case: str | None = None
+
+
+class HealthResponse(BaseModel):
+    status: Literal["ok"] = "ok"
+    database: Literal["ready"] = "ready"
+    live_runs_enabled: bool
 
 
 ReviewerFactory = Callable[[StartRunRequest], OpenAIReviewer]
@@ -147,6 +159,10 @@ class BenchmarkService:
         with self._repository() as repository:
             return repository.get_run(run_id)
 
+    def check_health(self) -> None:
+        with self._repository() as repository:
+            repository.ping()
+
     def shutdown(self) -> None:
         self._executor.shutdown(wait=False, cancel_futures=False)
 
@@ -216,7 +232,28 @@ class BenchmarkService:
         )
 
 
-def create_app(service: BenchmarkService | None = None) -> FastAPI:
+def _environment_flag(name: str, *, default: bool) -> bool:
+    raw_value = os.environ.get(name)
+    if raw_value is None:
+        return default
+    normalized = raw_value.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError(f"{name} must be a boolean value")
+
+
+def create_app(
+    service: BenchmarkService | None = None,
+    *,
+    allow_live_runs: bool | None = None,
+) -> FastAPI:
+    live_runs_enabled = (
+        _environment_flag("PATCHBENCH_ALLOW_LIVE_RUNS", default=True)
+        if allow_live_runs is None
+        else allow_live_runs
+    )
     benchmark_service = service or BenchmarkService(
         database_path=Path(os.environ.get("PATCHBENCH_DATABASE", "results/patchbench.db")),
         benchmark_dir=Path(os.environ.get("PATCHBENCH_BENCHMARK", "benchmark")),
@@ -229,6 +266,11 @@ def create_app(service: BenchmarkService | None = None) -> FastAPI:
         benchmark_service.shutdown()
 
     application = FastAPI(title="PatchBench API", version="0.1.0", lifespan=lifespan)
+
+    @application.get("/health", response_model=HealthResponse, include_in_schema=False)
+    def health() -> HealthResponse:
+        benchmark_service.check_health()
+        return HealthResponse(live_runs_enabled=live_runs_enabled)
 
     @application.get("/", response_class=HTMLResponse, include_in_schema=False)
     def dashboard() -> HTMLResponse:
@@ -264,6 +306,11 @@ def create_app(service: BenchmarkService | None = None) -> FastAPI:
         status_code=status.HTTP_202_ACCEPTED,
     )
     def start_run(request: StartRunRequest) -> RunRecord:
+        if not live_runs_enabled:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=LIVE_RUNS_DISABLED_MESSAGE,
+            )
         try:
             return benchmark_service.start_run(request)
         except ValueError as exc:
@@ -308,7 +355,11 @@ app = create_app()
 
 
 def main() -> None:
-    uvicorn.run("patchbench.api:app", host="127.0.0.1", port=8000)
+    uvicorn.run(
+        "patchbench.api:app",
+        host=os.environ.get("PATCHBENCH_HOST", DEFAULT_HOST),
+        port=int(os.environ.get("PORT", str(DEFAULT_PORT))),
+    )
 
 
 if __name__ == "__main__":

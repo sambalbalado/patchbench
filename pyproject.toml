@@ -21,6 +21,7 @@ dev = ["httpx2>=2.13,<3", "pytest>=8.3,<9", "ruff>=0.9,<1"]
 [project.scripts]
 patchbench = "patchbench.runner:main"
 patchbench-api = "patchbench.api:main"
+patchbench-seed-demo = "patchbench.demo:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

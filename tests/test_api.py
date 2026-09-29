@@ -5,7 +5,7 @@ from typing import Any
 
 from fastapi.testclient import TestClient
 
-from patchbench.api import BenchmarkService, create_app
+from patchbench.api import BenchmarkService, create_app, main
 from patchbench.evaluator import summarize
 from patchbench.loader import load_cases
 from patchbench.schemas import BenchmarkRun, CaseScore
@@ -157,6 +157,44 @@ def test_validation_and_missing_run_responses(tmp_path) -> None:
         assert client.get("/runs/missing").status_code == 404
         assert client.get("/runs/missing/results").status_code == 404
         assert executor.jobs == []
+
+
+def test_read_only_mode_blocks_paid_runs_but_keeps_history_available(
+    tmp_path, monkeypatch
+) -> None:
+    executor = ManualExecutor()
+    monkeypatch.setenv("PATCHBENCH_ALLOW_LIVE_RUNS", "false")
+    app = create_app(make_service(tmp_path, executor))
+
+    with TestClient(app) as client:
+        health = client.get("/health")
+        blocked = client.post("/runs", json={"model": "gpt-test"})
+
+        assert health.status_code == 200
+        assert health.json() == {
+            "status": "ok",
+            "database": "ready",
+            "live_runs_enabled": False,
+        }
+        assert client.get("/runs").json() == []
+        assert blocked.status_code == 403
+        assert "disabled" in blocked.json()["detail"]
+        assert executor.jobs == []
+
+
+def test_server_uses_platform_host_and_port(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_run(app: str, *, host: str, port: int) -> None:
+        captured.update(app=app, host=host, port=port)
+
+    monkeypatch.setenv("PATCHBENCH_HOST", "0.0.0.0")
+    monkeypatch.setenv("PORT", "9123")
+    monkeypatch.setattr("patchbench.api.uvicorn.run", fake_run)
+
+    main()
+
+    assert captured == {"app": "patchbench.api:app", "host": "0.0.0.0", "port": 9123}
 
 
 def test_worker_failure_is_visible_through_status(tmp_path) -> None:

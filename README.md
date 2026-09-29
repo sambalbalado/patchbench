@@ -122,6 +122,17 @@ SQLite connections. By default, history is stored in `results/patchbench.db`;
 `PATCHBENCH_DATABASE` and `PATCHBENCH_BENCHMARK` can override the database and benchmark paths. The
 API key stays in the server process environment and is not part of the JSON contract.
 
+## Read-only public demo deployment
+
+The repository includes a Render Blueprint and GitHub Actions workflow for a safe public demo.
+`render.yaml` disables live benchmark creation, omits the OpenAI key, and seeds SQLite from the two
+committed baseline results whenever the service starts. The dashboard and saved-result endpoints
+remain available, while `POST /runs` returns `403` so a visitor cannot spend API credits.
+
+See the [deployment and rollback guide](docs/deployment.md) for the hosting model, free-tier
+limitations, account-side launch steps, smoke test, and the security requirements for ever
+enabling live runs on a hosted service.
+
 ## Benchmark format
 
 Each case contains a code patch and its expected finding:
@@ -227,9 +238,10 @@ category, file, and line on every positive case. The run cost an estimated $0.04
 
 Milestones 1–5 are complete: PatchBench has a real-model baseline, reliable bounded execution, an
 audited coverage matrix, a validated `review-v2` comparison, a tested experiment-history API, and a
-two-run dashboard with aggregate and case-level evidence. The next steps are:
+two-run dashboard with aggregate and case-level evidence. Milestone 6 now has a safe deployment
+configuration and continuous testing. The next steps are:
 
-1. Deploy the API and dashboard with continuous testing.
+1. Launch and smoke-test the public read-only demo.
 2. Polish the portfolio documentation and architecture explanation.
 3. Record a concise PatchBench demonstration.
 
