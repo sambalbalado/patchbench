@@ -17,6 +17,17 @@ The public demo is read-only: it presents the two versioned baselines without ex
 or allowing visitors to create paid model runs. The free service may need a short warm-up after a
 period of inactivity.
 
+## 75-second project demo
+
+[![PatchBench dashboard comparing the review-v1 and review-v2 saved runs](docs/demo/patchbench-dashboard.png)](docs/demo/patchbench-demo.mp4)
+
+**[Watch the narrated PatchBench walkthrough](docs/demo/patchbench-demo.mp4)** ·
+[Read the accessible transcript and evidence notes](docs/demo/transcript.md)
+
+The walkthrough uses the public read-only dashboard and the repository's two versioned baseline
+results. It shows the benchmark method, measured improvements, and case-level evidence without
+creating a new paid model run.
+
 ## Why PatchBench
 
 AI code-review demos often show a handful of successful findings but do not measure false alarms,
