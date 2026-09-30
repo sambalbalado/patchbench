@@ -17,16 +17,17 @@ The public demo is read-only: it presents the two versioned baselines without ex
 or allowing visitors to create paid model runs. The free service may need a short warm-up after a
 period of inactivity.
 
-## 75-second project demo
+## Project demo
 
-[![PatchBench dashboard comparing the review-v1 and review-v2 saved runs](docs/demo/patchbench-dashboard.png)](docs/demo/patchbench-demo.mp4)
+![PatchBench dashboard comparing the review-v1 and review-v2 saved runs](docs/demo/patchbench-dashboard.png)
 
-**[Watch the narrated PatchBench walkthrough](docs/demo/patchbench-demo.mp4)** ·
-[Read the accessible transcript and evidence notes](docs/demo/transcript.md)
+This screenshot shows two real saved GPT-5 Mini runs from the same 24-case benchmark. The
+`review-v2` candidate raised overall rubric accuracy from **83.3% to 96.7%**, improved detection
+accuracy from **83.3% to 91.7%**, and reduced the false-positive rate from **33.3% to 16.7%**.
 
-The walkthrough uses the public read-only dashboard and the repository's two versioned baseline
-results. It shows the benchmark method, measured improvements, and case-level evidence without
-creating a new paid model run.
+**[Open the screenshot walkthrough](docs/demo/walkthrough.md)** to follow the comparison from run
+selection through aggregate metrics and case-level evidence. The public dashboard remains read-only
+and cannot create paid model requests.
 
 ## Why PatchBench
 
